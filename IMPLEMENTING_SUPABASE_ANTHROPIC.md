@@ -42,22 +42,31 @@ This document outlines the changes required to evolve the current local-only pro
 ### Current State
 - Responses are handcrafted from onboarding summaries; no external API.
 
-### Target State
-- Chat API route streams Anthropic completions using the persisted conversation history + personal report context.
+### Target State (Phase 1)
+- A Next.js API route streams Anthropic completions using the persisted conversation history + personal report context.
+- Streaming runs in the **Node runtime** (not Edge) so we get Vercel’s 60‑second execution window—more than enough for our ≤30s responses.
+
+### Target State (Phase 2 Option)
+- If concurrency regularly exceeds ~600 simultaneous streams or we prepare for a large launch, we can move the streaming handler into a dedicated Chat Gateway service (Fastify/Hono/Go) without touching the clients—only swap the base URL in `packages/api-client`.
 
 ### Action Items
-1. **Create Next.js API route** (`/api/chat/stream` or similar):
+1. **Phase 1 – Next.js API route (`/api/chat/stream`):**
    - Authenticate via Supabase session.
    - Write incoming user message to `chat_messages`.
    - Build model context: latest N messages + Personal Insights summary.
    - Call Anthropic’s streaming endpoint (`ANTHROPIC_API_KEY`).
-   - Stream tokens back to the browser, writing assistant messages to `chat_messages` as they finalize.
-2. **Update chat client** to read/write via this API route instead of local simulation.
-3. **Add usage limits/error handling** (e.g., friendly fallback when the key is missing).
+   - Stream tokens back to the browser, sending heartbeats every 15s, and write the assistant message once streaming finishes.
+   - Enforce a 30s max duration; if the stream exceeds it, finish server-side and send a “tap to reveal final answer” callout.
+2. **Phase 2 – Optional Chat Gateway:**
+   - Mirror the same handler in a long-lived service (Fly.io, ECS, etc.) when concurrency/latency demands it.
+   - Keep the client API identical; only the host/URL changes.
+3. **Update chat client** to call the shared `chatStream` helper and persist messages via Supabase.
+4. **Add usage limits/error handling** (e.g., friendly fallback when the key is missing, backoff on 429s).
 
 **Env Vars Required**
 - `ANTHROPIC_API_KEY`
 - Optional: `ANTHROPIC_MODEL_NAME` if you want to configure the LLM via env.
+- Optional (Phase 2): `CHAT_GATEWAY_URL`
 
 ---
 
@@ -106,5 +115,13 @@ This document outlines the changes required to evolve the current local-only pro
 
 ---
 
+## 7. Scaling & Streaming Strategy
+- **Start with Next.js streaming:** use the Node runtime (`export const runtime = 'nodejs'`) so Vercel Pro’s 60s limit comfortably covers our ≤30s responses. Send heartbeats every ~15s and enforce a 30s max duration.
+- **Monitor concurrency:** if sustained concurrent streams approach ~600 or we schedule a high-profile launch, spin up the dedicated Chat Gateway (Fastify/Hono/Go) in a separate service (`apps/chat-gateway`) and point the client to its `/v1/chat/stream` endpoint. No client changes besides the base URL.
+- **Keep clients agnostic:** all streaming calls should go through `packages/api-client`, making the switch between Next.js and the gateway purely configuration.
+- **Continue to use Supabase for persistence:** regardless of where streaming runs, write chat messages, reports, quests, and analytics events through the same Supabase tables so both web and mobile stay in sync.
+
+---
+
 ## Summary
-With Supabase handling auth + persistence and Anthropic powering conversations, the existing code becomes a production-ready browser MVP. The main engineering work is swapping out local stores for Supabase queries, streaming Anthropic in the chat API, and delivering a richer report interaction inside the chat experience.
+With Supabase handling auth + persistence and Anthropic powering conversations, the existing code becomes a production-ready browser MVP. Start with Next.js for streaming, keep the Chat Gateway ready as traffic scales, and focus the engineering work on replacing local stores, wiring the streaming API, and enriching the report experience.

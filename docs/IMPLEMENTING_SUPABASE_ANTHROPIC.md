@@ -44,23 +44,29 @@ SUPABASE_SERVICE_ROLE_KEY   # server-only
 ### Current state
 - Chat responses are handcrafted based on onboarding summaries.
 
-### Target state
-- Next.js API route streams replies from Anthropic using conversation history + personal report context.
+### Target state (Phase 1)
+- Next.js Node-runtime API route streams replies from Anthropic using conversation history + the personal report summary.
+- Heartbeats keep the SSE connection alive; we enforce a 30s max duration to stay within the product spec.
+
+### Target state (Phase 2 option)
+- If concurrency regularly exceeds ~600 simultaneous streams (or we plan a large launch), mirror the same handler in a dedicated Chat Gateway service (Fastify/Hono/Go) deployed on Fly.io/ECS and swap the base URL in `packages/api-client`.
 
 ### Action items
-1. Create `/api/chat/stream` (or similar):
+1. Create `/api/chat/stream` (Node runtime):
    - Authenticate via Supabase session.
    - Insert the user message into `chat_messages`.
    - Build model context: latest N messages + Personal Insights summary pulled from `reports`.
    - Call Anthropic’s streaming endpoint with `ANTHROPIC_API_KEY`.
-   - Stream tokens back to the client; insert assistant messages into `chat_messages` when complete.
-2. Update chat client to use this route instead of the local simulator.
+   - Stream tokens back to the client, send heartbeats every ~15s, cap the stream at 30s, and persist the assistant message when complete.
+2. Update chat client to use this route via the shared `chatStream` helper.
 3. Add rate limiting & retries to stay within Anthropic quotas; optionally cache deterministic responses (e.g., report summaries).
+4. Prepare the Chat Gateway service skeleton so it’s easy to enable when traffic warrants it.
 
 **Environment variables**
 ```
 ANTHROPIC_API_KEY
 ANTHROPIC_MODEL_NAME (optional)
+CHAT_GATEWAY_URL (optional, for Phase 2)
 ```
 
 ---
@@ -146,12 +152,13 @@ Action items:
 - Cache deterministic outputs where appropriate.
 
 ### When to consider a dedicated backend
+- Sustained streaming concurrency above ~600 sessions or a high-profile launch where cold starts cannot be tolerated (move `/api/chat/stream` into the Chat Gateway service and point clients at it).
 - Long-running or high-volume jobs beyond Supabase cron limits.
 - Real-time voice streaming/WebRTC.
 - Advanced analytics/event pipelines shared across platforms.
 - Unified business logic consumed by multiple clients (web, iOS, Android) when duplicating logic in Next.js becomes risky.
 
-Until those needs appear, staying “all-in Next.js + Supabase + Anthropic” is perfectly viable.
+Until those needs appear, staying “all-in Next.js + Supabase + Anthropic” is perfectly viable, with the chat gateway as an easy upgrade when traffic demands it.
 
 ---
 

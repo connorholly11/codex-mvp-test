@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Purpose Mobile",
+    "slug": "purpose-mobile",
+    "scheme": "purpose",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

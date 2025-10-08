@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Purpose Monorepo
+
+This repository now houses the Purpose web experience (Next.js) and the in-progress Expo/React Native iOS client, along with shared packages.
+
+## Structure
+
+```
+apps/
+  web/        # Next.js web app (current prototype)
+  mobile/     # Expo React Native app (base chat scaffold)
+packages/
+  api-client/ # Placeholder for shared Supabase/Anthropic helpers
+  analytics/  # Placeholder for shared analytics helpers
+  ui/         # Placeholder for shared design tokens/components
+```
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies (from repo root):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Web
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev:web        # runs Next.js dev server inside apps/web
+pnpm lint:web       # lint the web app
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Mobile (Expo)
 
-## Learn More
+```bash
+pnpm dev:mobile     # starts Expo in development mode
+pnpm --filter mobile ios   # optional alias to open iOS simulator
+```
 
-To learn more about Next.js, take a look at the following resources:
+> The mobile app currently contains a minimal chat screen to validate Expo tooling. Supabase/Anthropic integration and shared packages will plug in here as they are built out.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Shared Packages
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `@purpose/api-client`, `@purpose/ui`, `@purpose/analytics` are placeholders for cross-platform logic. As the backend is wired up, move shared Supabase APIs, design tokens, and analytics helpers into these packages so both apps stay in sync.
 
-## Deploy on Vercel
+## Next Steps
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Fill the shared packages with real implementations (Supabase clients, tokens, analytics).
+2. Wire the Expo app to the same Supabase/Anthropic endpoints as the web app.
+3. Add platform-specific polish (haptics, voice input/output, push notifications) to the mobile client.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Refer to `docs/IMPLEMENTING_SUPABASE_ANTHROPIC.md` for the Supabase/Anthropic rollout plan.
