@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --background: #070609;
+  --foreground: #f7f6f9;
+  --surface: #15161e;
+  --surface-muted: #1c1d29;
+  --surface-alt: #28180b;
+  --border: rgba(255, 255, 255, 0.08);
+  --muted: rgba(247, 246, 249, 0.64);
+  --accent: #5d1bed;
+  --accent-foreground: #ffffff;
+  --danger: #fb0000;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #efe5e0;
+  --foreground: #15161e;
+  --surface: #ffffff;
+  --surface-muted: #f7f2ef;
+  --surface-alt: #ebe4fc;
+  --border: rgba(21, 22, 30, 0.12);
+  --muted: rgba(21, 22, 30, 0.62);
+  --accent: #713be7;
+  --accent-foreground: #ffffff;
+  --danger: #b3261e;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #070609;
+  --foreground: #f7f6f9;
+  --surface: #15161e;
+  --surface-muted: #1c1d29;
+  --surface-alt: #28180b;
+  --border: rgba(255, 255, 255, 0.08);
+  --muted: rgba(247, 246, 249, 0.64);
+  --accent: #5d1bed;
+  --accent-foreground: #ffffff;
+  --danger: #fb6b6b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+::selection {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
 }

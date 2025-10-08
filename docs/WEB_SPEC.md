@@ -144,17 +144,20 @@ Web-specific notes:
   - Server state: TanStack Query for API calls and SSE chat stream.
 - **Routing**: File-based routes: `/`, `/onboarding/*`, `/chat`, `/quests`, `/journey`, `/report/[id]`, `/paywall`.
 - **Streaming**: SSE via fetch + ReadableStream; use abort controllers for cancellation.
-- **Storage**: localStorage (autosave), IndexedDB for larger offline caches if needed.
+- **Storage**: Browser-local only (localStorage for autosave, IndexedDB as needed). No external database or remote persistence in the prototype.
 - **Analytics**: PostHog web SDK, Customer.io webhooks, AppsFlyer web (if required) or alternative web attribution.
 - **Error Monitoring**: Sentry browser SDK with replay for session diagnostics.
 - **Testing**: Vitest + Testing Library + Playwright for end-to-end flows (onboarding, chat, paywall).
 
-### Backend (Unchanged Core)
-- Maintain AWS Lambda + API Gateway architecture.
-- Ensure CORS configuration for web origins.
-- Add HTTPS-only cookies for session tokens when needed; leverage Clerk webhooks to sync user status.
-- Chat SSE endpoint must support high concurrency; consider AWS Lambda function URLs with CloudFront for low-latency delivery.
-- Use DynamoDB streams + EventBridge for analytics fan-out.
+### Backend (Reference Only)
+- The prototype does not provision AWS or any remote services; backend endpoints are mocked client-side with local storage and in-memory adapters.
+- For eventual production hardening, keep the target architecture in mind: AWS Lambda + API Gateway, with Clerk-issued JWT validation and DynamoDB storage.
+- When transitioning to production, ensure CORS configuration for web origins, prepare SSE capacity planning, and fan out analytics via EventBridge.
+
+### Environment & Secrets
+- Required runtime configuration is limited to `ANTHROPIC_API_KEY` for the coaching model.
+- All other integrations (Clerk, RevenueCat, analytics) remain stubbed locally during this internal build.
+- Provide a `.env.local.example` file documenting the single expected variable.
 
 ### Deployment Pipeline
 - CI: GitHub Actions (lint, test, build). Use Playwright tests on PRs targeting `main`.
@@ -180,6 +183,7 @@ Event taxonomy mirrors mobile spec with web-specific context properties:
 - Track `page_view` per route and `cta_click` for marketing surfaces.
 - Funnel dashboards: Onboarding completion, trial start, chat engagement, quest completion.
 - Use PostHog autocapture sparingly; rely on explicit events for critical flows.
+- Prototype implementation: analytics events buffer locally in `localStorage` (`analytics.ts`) for debugging before wiring remote sinks. A developer inspector at `/debug/analytics` exposes the buffered events.
 
 ---
 
@@ -207,9 +211,10 @@ Event taxonomy mirrors mobile spec with web-specific context properties:
 1. Bootstrap Next.js project, configure Clerk, TanStack Query, Tailwind, PostHog.
 2. Implement landing page + age gate modal.
 3. Build onboarding wizard (demographics → BFI → values → reflections) with autosave.
-4. Integrate backend submission + processing screen.
-5. Add Clerk auth flow and legal disclaimer modal.
+4. Wire the processing screen to a local persistence service that simulates backend responses.
+5. Add a lightweight account creation stub (local identity) and legal disclaimer modal.
 6. Deliver chat interface with streaming responses and You Report card display.
+7. Provide prototype reset action to clear local state for iterative testing.
 
 ### Phase 2 – Engagement Features
 1. Implement Quests tab with quest types and completion modal.
