@@ -28,7 +28,7 @@ export function ConstraintStep({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
           Step 3 of 6
         </p>
-        <h2 className="text-3xl font-semibold text-foreground">
+        <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
           What’s holding you back the most?
         </h2>
         <p className="text-sm text-muted">
@@ -56,7 +56,7 @@ export function ConstraintStep({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex w-full items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
           >
             Back
           </button>
@@ -67,7 +67,7 @@ export function ConstraintStep({
           type="button"
           onClick={onContinue}
           disabled={!canContinue}
-          className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           Continue
         </button>

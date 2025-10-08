@@ -46,7 +46,7 @@ export function AgeGateDialog({ open, onConfirm, onCancel }: AgeGateDialogProps)
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
       role="presentation"
       onClick={onCancel}
     >
@@ -55,7 +55,7 @@ export function AgeGateDialog({ open, onConfirm, onCancel }: AgeGateDialogProps)
         aria-modal="true"
         aria-labelledby="age-dialog-title"
         aria-describedby="age-dialog-body"
-        className="w-full max-w-lg rounded-3xl border border-border bg-surface p-8 shadow-2xl shadow-black/40"
+        className="w-full max-w-lg rounded-2xl border border-border bg-surface px-6 py-7 shadow-2xl shadow-black/40 sm:rounded-3xl sm:px-8"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex flex-col gap-6">
@@ -77,7 +77,7 @@ export function AgeGateDialog({ open, onConfirm, onCancel }: AgeGateDialogProps)
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex w-full items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
             >
               Go back
             </button>
@@ -85,7 +85,7 @@ export function AgeGateDialog({ open, onConfirm, onCancel }: AgeGateDialogProps)
               ref={confirmButtonRef}
               type="button"
               onClick={onConfirm}
-              className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex w-full items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
             >
               I am 18 or older
             </button>

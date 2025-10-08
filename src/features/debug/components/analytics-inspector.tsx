@@ -22,11 +22,11 @@ export function AnalyticsInspector() {
           Events are buffered locally for this prototype. Use this panel to confirm which
           actions are being tracked before wiring an external sink.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={refresh}
-            className="rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex w-full items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
           >
             Refresh
           </button>
@@ -36,13 +36,13 @@ export function AnalyticsInspector() {
               clearEvents();
               refresh();
             }}
-            className="rounded-full border border-border px-4 py-2 text-xs font-semibold text-muted transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex w-full items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold text-muted transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
           >
             Clear buffer
           </button>
         </div>
       </header>
-      <section className="rounded-3xl border border-border bg-surface p-6">
+      <section className="rounded-2xl border border-border bg-surface px-5 py-6 sm:rounded-3xl sm:p-6">
         {events.length === 0 ? (
           <p className="text-sm text-muted">No events captured yet.</p>
         ) : (

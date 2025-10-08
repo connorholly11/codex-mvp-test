@@ -60,11 +60,11 @@ export function QuestModal({ quest, onClose, onComplete }: QuestModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-3xl border border-border bg-surface p-8 shadow-2xl shadow-black/30"
+        className="w-full max-w-lg rounded-2xl border border-border bg-surface px-6 py-7 shadow-2xl shadow-black/30 sm:rounded-3xl sm:px-8"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-6 flex flex-col gap-2">
@@ -133,11 +133,11 @@ export function QuestModal({ quest, onClose, onComplete }: QuestModalProps) {
           </div>
         ) : null}
 
-        <div className="mt-8 flex justify-end gap-3">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex w-full items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
           >
             Cancel
           </button>
@@ -145,7 +145,7 @@ export function QuestModal({ quest, onClose, onComplete }: QuestModalProps) {
             type="button"
             onClick={handleSubmit}
             disabled={!isValid}
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             Complete quest
           </button>

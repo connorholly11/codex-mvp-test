@@ -63,7 +63,7 @@ export function JourneyRoot() {
 
   if (!isReady) {
     return (
-      <div className="rounded-3xl border border-border bg-surface p-10 text-sm text-muted">
+      <div className="rounded-2xl border border-border bg-surface px-6 py-8 text-sm text-muted sm:rounded-3xl sm:p-10">
         Redirecting to onboarding…
       </div>
     );
@@ -75,18 +75,18 @@ export function JourneyRoot() {
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
           Journey overview
         </span>
-        <h1 className="text-3xl font-semibold text-foreground">Track how Purpose evolves with you</h1>
+        <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Track how Purpose evolves with you</h1>
         <p className="text-sm text-muted">
           This space will visualise your milestones, streaks, and evolving insights. For now it
           echoes the key signals we already capture locally.
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {achievements.map((achievement) => (
           <div
             key={achievement.title}
-            className="rounded-3xl border border-border bg-surface-muted p-6 shadow-sm"
+            className="rounded-2xl border border-border bg-surface-muted p-5 shadow-sm sm:rounded-3xl sm:p-6"
           >
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
               {achievement.title}
@@ -97,8 +97,8 @@ export function JourneyRoot() {
         ))}
       </section>
 
-      <section className="rounded-3xl border border-border bg-surface p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="rounded-2xl border border-border bg-surface px-5 py-6 sm:rounded-3xl sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
               Insights archive
@@ -107,7 +107,7 @@ export function JourneyRoot() {
           </div>
           <button
             type="button"
-            className="rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex w-full items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
             onClick={() => router.push('/docs')}
           >
             View spec

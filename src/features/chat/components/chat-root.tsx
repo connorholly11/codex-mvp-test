@@ -69,15 +69,20 @@ export function ChatRoot() {
     placeholder.pending = true;
     appendMessage(placeholder);
 
-  const responseSegments = buildAssistantResponse(trimmed, onboardingData);
-  const [primary, ...rest] = responseSegments;
-  if (!primary) {
-    setIsStreaming(false);
-    return;
-  }
-  streamMessage(primary, assistantId, updateMessage, () => {
-    const totalLength = responseSegments.reduce((sum, segment) => sum + segment.length, 0);
-    logEvent('chat_response_completed', { length: totalLength, segments: responseSegments.length });
+    const responseSegments = buildAssistantResponse(trimmed, onboardingData);
+    const [primary, ...rest] = responseSegments;
+    if (!primary) {
+      setIsStreaming(false);
+      return;
+    }
+
+    streamMessage(primary, assistantId, updateMessage, () => {
+      const totalLength = responseSegments.reduce((sum, segment) => sum + segment.length, 0);
+      logEvent('chat_response_completed', {
+        length: totalLength,
+        segments: responseSegments.length,
+      });
+
       if (rest.length > 0) {
         rest.forEach((segment, index) => {
           window.setTimeout(() => {
@@ -85,6 +90,7 @@ export function ChatRoot() {
           }, (index + 1) * 350);
         });
       }
+
       setIsStreaming(false);
     });
   };
@@ -97,7 +103,7 @@ export function ChatRoot() {
   }, [user?.name]);
 
   return (
-    <div className="flex h-[calc(100vh-160px)] flex-col gap-6">
+    <div className="flex min-h-[70vh] flex-col gap-6 md:h-[calc(100vh-200px)]">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-foreground">Chat with Fermi</h1>
         <p className="text-sm text-muted">{headerSubtitle}</p>
@@ -105,9 +111,9 @@ export function ChatRoot() {
 
       <YouReportCard data={onboardingData} />
 
-      <div className="flex-1 overflow-hidden rounded-3xl border border-border bg-surface">
+      <div className="flex-1 overflow-hidden rounded-2xl border border-border bg-surface sm:rounded-3xl">
         <div className="flex h-full flex-col">
-          <div className="flex-1 space-y-4 overflow-y-auto p-6">
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6">
             {messages.map((message) => (
               <ChatBubble key={message.id} message={message} />
             ))}
@@ -115,19 +121,19 @@ export function ChatRoot() {
             <div ref={bottomRef} />
           </div>
           <form onSubmit={handleSubmit} className="border-t border-border p-4">
-            <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message to Fermi..."
                 rows={1}
-                className="min-h-[48px] flex-1 resize-none rounded-2xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="min-h-[48px] max-h-40 w-full flex-1 resize-none rounded-2xl border border-border bg-surface-muted px-4 py-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
               <button
                 type="submit"
                 disabled={isStreaming || input.trim().length === 0}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-12 w-full items-center justify-center rounded-full bg-accent text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-12"
                 aria-label="Send message"
               >
                 ➤
@@ -164,7 +170,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm transition ${
+        className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm shadow-sm transition sm:max-w-[75%] md:max-w-[65%] ${
           isUser
             ? 'rounded-br-sm bg-accent text-accent-foreground'
             : 'rounded-bl-sm bg-surface-muted text-foreground'

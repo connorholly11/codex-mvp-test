@@ -15,7 +15,7 @@ export function CompleteStep({ onContinue }: OnboardingStepComponentProps) {
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
           You’re all set
         </span>
-        <h2 className="text-3xl font-semibold text-foreground">
+        <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
           Welcome in, {user?.name?.split(' ')[0] ?? 'friend'}.
         </h2>
         <p className="max-w-xl text-sm text-muted">
@@ -26,7 +26,7 @@ export function CompleteStep({ onContinue }: OnboardingStepComponentProps) {
       <button
         type="button"
         onClick={onContinue}
-        className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
       >
         Enter the chat
       </button>

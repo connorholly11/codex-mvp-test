@@ -31,7 +31,7 @@ export function QuestsRoot() {
 
   if (!isReady) {
     return (
-      <div className="rounded-3xl border border-border bg-surface p-10 text-sm text-muted">
+      <div className="rounded-2xl border border-border bg-surface px-6 py-8 text-sm text-muted sm:rounded-3xl sm:p-10">
         Redirecting to onboarding…
       </div>
     );
@@ -51,7 +51,7 @@ export function QuestsRoot() {
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
           Daily quests
         </span>
-        <h1 className="text-3xl font-semibold text-foreground">Stay in motion between chats</h1>
+        <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Stay in motion between chats</h1>
         <p className="text-sm text-muted">
           These prompts sharpen Fermi’s understanding of you and encourage small but meaningful
           moments of reflection each day.
@@ -59,19 +59,19 @@ export function QuestsRoot() {
       </header>
 
       {celebratedQuest ? (
-        <div className="rounded-3xl border border-accent bg-accent/10 px-4 py-3 text-sm text-accent">
+        <div className="rounded-2xl border border-accent bg-accent/10 px-4 py-3 text-sm text-accent sm:rounded-3xl">
           Quest “{celebratedQuest.title}” completed – nice work.
         </div>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {QUESTS.map((quest) => {
           const status = statuses[quest.id] ?? 'available';
           const isCompleted = status === 'completed';
           return (
             <article
               key={quest.id}
-              className="flex h-full flex-col justify-between rounded-3xl border border-border bg-surface-muted p-6"
+              className="flex h-full flex-col justify-between rounded-2xl border border-border bg-surface-muted p-5 sm:rounded-3xl sm:p-6"
             >
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
@@ -90,7 +90,7 @@ export function QuestsRoot() {
                 type="button"
                 disabled={isCompleted}
                 onClick={() => setActiveQuestId(quest.id)}
-                className="mt-6 inline-flex items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 {isCompleted ? 'Completed' : 'Start quest'}
               </button>
@@ -99,7 +99,7 @@ export function QuestsRoot() {
         })}
       </section>
 
-      <section className="rounded-3xl border border-border bg-surface p-6">
+      <section className="rounded-2xl border border-border bg-surface px-5 py-6 sm:rounded-3xl sm:p-6">
         <h2 className="mb-3 text-base font-semibold text-foreground">Quest history</h2>
         {responses.length === 0 ? (
           <p className="text-sm text-muted">Complete a quest to see your responses here.</p>

@@ -34,7 +34,7 @@ export default function RootLayout({
         <ThemeProvider>
           <div className="min-h-screen bg-background text-foreground transition-colors">
             <AppHeader />
-            <main className="mx-auto w-full max-w-5xl px-6 py-12 md:py-16">
+            <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12 md:py-16">
               {children}
             </main>
           </div>
