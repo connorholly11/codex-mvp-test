@@ -44,7 +44,7 @@ export function ChatRoot() {
         const [history, auth] = await Promise.all([
           fetchChatHistory(),
           supabase.auth.getUser(),
-        , router]);
+        ]);
 
         if (!active) {
           return;

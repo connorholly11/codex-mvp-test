@@ -32,7 +32,9 @@ function SessionProvider({ children }: { children: ReactNode }) {
         }
       });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.access_token && session.user) {
         setSession({
           accessToken: session.access_token,
@@ -46,7 +48,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
-      subscription.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [clearSession, setSession]);
 

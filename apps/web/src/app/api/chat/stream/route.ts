@@ -121,7 +121,6 @@ export async function POST(request: NextRequest) {
   }, 29000);
 
   let assistantMessage = '';
-  let streamFinished = false;
   let streamAborted = false;
 
   const stream = new ReadableStream<Uint8Array>({
@@ -163,8 +162,7 @@ export async function POST(request: NextRequest) {
           }
 
           if (event.type === 'message_delta' && event.delta?.stop_reason) {
-            streamFinished = true;
-            controller.enqueue(encoder.encode(`event: done\ndata: {}\n\n`));
+            // Completion received; remaining cleanup handled after persistence.
           }
         }
       } catch (error) {
@@ -176,10 +174,6 @@ export async function POST(request: NextRequest) {
       } finally {
         clearTimeout(timeoutId);
         clearInterval(heartbeat);
-
-        if (!streamFinished && !streamAborted) {
-          controller.enqueue(encoder.encode(`event: done\ndata: {}\n\n`));
-        }
 
         if (assistantMessage.trim().length > 0) {
           const assistantInsert = await supabase
@@ -221,6 +215,10 @@ export async function POST(request: NextRequest) {
               })}\n\n`,
             ),
           );
+        }
+
+        if (!streamAborted) {
+          controller.enqueue(encoder.encode(`event: done\ndata: {}\n\n`));
         }
 
         controller.close();

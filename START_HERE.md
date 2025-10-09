@@ -10,41 +10,43 @@ pnpm dev:web        # http://localhost:3000 (Next.js)
 pnpm dev:mobile     # Expo dev server (sign-in uses Supabase magic codes)
 ```
 
-Set these environment variables (see `.env`, `.env.local`, `.env.production`, and Expo `.env`):
+> ⚠️ Never commit real API keys, passwords, or tokens to Git. Keep actual values in local `.env*` files only.
+
+Set these environment variables (store the **real** values in `.env`, `.env.local`, `.env.production`, and Expo `.env`):
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
-SUPABASE_DB_PASSWORD=CodexMVP2025SecurePass!
-ANTHROPIC_API_KEY=sk-ant-api03-...
+NEXT_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_URL>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
+SUPABASE_SERVICE_ROLE_KEY=<YOUR_SUPABASE_SERVICE_ROLE_KEY>
+SUPABASE_DB_PASSWORD=<YOUR_SUPABASE_DATABASE_PASSWORD>
+ANTHROPIC_API_KEY=<YOUR_ANTHROPIC_API_KEY>
 CHAT_SYSTEM_PROMPT="You are an AI coach. Speak with compassionate candor..."    # optional override
 
 # Expo (mobile) - automatically switches between dev/prod
-EXPO_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+EXPO_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_URL>
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
 EXPO_PUBLIC_API_BASE_URL_DEV=http://localhost:3000
-EXPO_PUBLIC_API_BASE_URL_PROD=https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
+EXPO_PUBLIC_API_BASE_URL_PROD=<YOUR_PRODUCTION_SITE_URL>
 ```
 
 ## Supabase Setup
 
-**✅ Already Configured:**
-- Project: `codex-mvp` (ref: `qovxpxqozlcsvynmtham`)
-- Dashboard: https://supabase.com/dashboard/project/qovxpxqozlcsvynmtham
-- Project URL: https://qovxpxqozlcsvynmtham.supabase.co
+**✅ Already Configured (replace with your project specifics):**
+- Project: `<YOUR_SUPABASE_PROJECT_NAME>` (ref: `<YOUR_SUPABASE_PROJECT_REF>`)
+- Dashboard: https://supabase.com/dashboard/project/<YOUR_SUPABASE_PROJECT_REF>
+- Project URL: https://<YOUR_SUPABASE_PROJECT_REF>.supabase.co
 - Linked to this repo (see `supabase/.temp`)
 
 **Environment Variables:**
-All credentials are in `.env` and `.env.local`:
+Keep real credentials in `.env` and `.env.local` (never in Git). Example placeholders:
 ```bash
 # Anthropic (for AI chat/reports)
-ANTHROPIC_API_KEY=sk-ant-api03-ZUbtoXFY69elG...
+ANTHROPIC_API_KEY=<YOUR_ANTHROPIC_API_KEY>
 
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
-SUPABASE_DB_PASSWORD=CodexMVP2025SecurePass!
+NEXT_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_URL>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
+SUPABASE_SERVICE_ROLE_KEY=<YOUR_SUPABASE_SERVICE_ROLE_KEY>
+SUPABASE_DB_PASSWORD=<YOUR_SUPABASE_DATABASE_PASSWORD>
 ```
 
 **Schema Management Workflow:**
@@ -95,6 +97,9 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - 🔜 Broaden automated tests + add additional report/quest analytics once backends are ready
 
 ## Future Notes
+- Add Supabase RLS migrations enforcing `user_id = auth.uid()` (and session-based policies for chat messages) before onboarding external testers.
+- Layer in per-user chat rate limiting/quota once traffic extends beyond internal use.
+- Extend the automated test suite (integration coverage for `/api/onboarding`, `/api/chat/*`, quests) before the next feature wave.
 - Flip the `CHAT_GATEWAY_URL` env once we deploy a dedicated streaming service.
 - Add Stripe/RevenueCat + PostHog only after the core loop proves sticky.
 - Monitor Anthropic usage; the SSE client already surfaces truncated responses when the 30s cap hits.

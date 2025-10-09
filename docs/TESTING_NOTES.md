@@ -1,5 +1,7 @@
 # Testing Notes
 
+> ⚠️ Do not record real API keys or passwords in test docs. Always use placeholders in examples.
+
 ## Environment Setup
 
 1. Install dependencies (once):
