@@ -11,16 +11,47 @@ pnpm dev:mobile     # starts Expo dev server
 ```
 
 ## Supabase Setup
-1. Log in with the CLI (already installed here):
+
+**✅ Already Configured:**
+- Project: `codex-mvp` (ref: `qovxpxqozlcsvynmtham`)
+- Dashboard: https://supabase.com/dashboard/project/qovxpxqozlcsvynmtham
+- Project URL: https://qovxpxqozlcsvynmtham.supabase.co
+- Linked to this repo (see `supabase/.temp`)
+
+**Environment Variables:**
+All credentials are in `.env` and `.env.local`:
+```bash
+# Anthropic (for AI chat/reports)
+ANTHROPIC_API_KEY=sk-ant-api03-ZUbtoXFY69elG... (already configured)
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+SUPABASE_DB_PASSWORD=CodexMVP2025SecurePass!
+```
+
+**Schema Management Workflow:**
+We use **SQL migrations via Supabase CLI** (no ORM required for schema):
+
+1. Create a new migration:
    ```bash
-   supabase login          # opens browser
-   supabase link --project-ref <your-ref>
+   supabase migration new add_table_name
    ```
-2. Apply schema migrations as you add them:
+
+2. Write SQL in `supabase/migrations/XXXXXXXX_add_table_name.sql`
+
+3. Apply to linked cloud project:
    ```bash
-   supabase db push        # runs SQL in supabase/migrations locally
+   supabase db push --linked
    ```
-3. Copy your Supabase keys into `.env.local` (see docs for the exact variables). The repo already has `supabase/.temp` linked metadata.
+
+4. Commit the migration file to Git
+
+**Data Access:**
+- Use **Supabase JS client** (already in `packages/api-client`)
+- Shared Zod schemas for type safety across web & mobile
+- No ORM needed initially—add Drizzle/Prisma later only if DX demands it
 
 ## MVP Tech Stack (for launch)
 - **Web:** Next.js 15 (App Router) deployed on Vercel.
@@ -41,8 +72,9 @@ pnpm dev:mobile     # starts Expo dev server
 - `docs/MONOREPO_MANAGEMENT.md`: pnpm workspace commands, conventions.
 
 ## Immediate Next Steps (suggested)
-- Create Supabase project, apply schema, wire env vars locally.
-- Implement `/api/onboarding` → save assessment + generate “You Report” (can stub Anthropic response initially).
+- ✅ ~~Create Supabase project, apply schema, wire env vars locally~~ (DONE)
+- Create initial schema migrations (users, messages, sessions tables)
+- Implement `/api/onboarding` → save assessment + generate "You Report" (can stub Anthropic response initially).
 - Implement `/api/chat/stream` → basic streaming using Anthropic; store messages in Supabase.
 - Update web/mobile clients to use the real APIs via `packages/api-client`.
 
