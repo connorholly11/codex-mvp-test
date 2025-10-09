@@ -1,7 +1,7 @@
 # Start Here
 
 ## One-Sentence Status
-Web onboarding and chat now persist to Supabase and stream replies from Anthropic; mobile still points at the shared API client but hasn’t been wired yet.
+Web onboarding and chat now persist to Supabase and stream replies from Anthropic; mobile app uses shared API client with automatic dev/prod URL switching; deployed to Vercel production.
 
 ## Install & Run
 ```bash
@@ -19,10 +19,11 @@ SUPABASE_DB_PASSWORD=CodexMVP2025SecurePass!
 ANTHROPIC_API_KEY=sk-ant-api03-...
 CHAT_SYSTEM_PROMPT="You are an AI coach. Speak with compassionate candor..."    # optional override
 
-# Expo (mobile)
+# Expo (mobile) - automatically switches between dev/prod
 EXPO_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000            # or deployed web URL
+EXPO_PUBLIC_API_BASE_URL_DEV=http://localhost:3000
+EXPO_PUBLIC_API_BASE_URL_PROD=https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
 ```
 
 ## Supabase Setup
@@ -67,7 +68,8 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 
 ## MVP Tech Stack (current)
 - **Web:** Next.js 15 (App Router) → Vercel
-- **Mobile:** Expo React Native (still using local prototype state until APIs are consumed)
+  - Production: https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
+- **Mobile:** Expo React Native (auto-switches between localhost dev and Vercel prod)
 - **Backend services:** Supabase Postgres/Auth; Anthropic for chat/report generation
 - **Optional early:** Sentry for error tracking
 - **Deferred:** Stripe/RevenueCat paywalls, PostHog analytics, dedicated Chat Gateway (enable when sustained streaming concurrency > ~600)
@@ -89,6 +91,7 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - ✅ Web chat streams via Anthropic (SSE) with configurable system prompt + Sonnet 3.5
 - ✅ Expo mobile app signs in (email OTP) and chats via Supabase/Anthropic (non-streaming endpoint)
 - ✅ Quests/Journey hydrate from Supabase (no local storage persistence remains)
+- ✅ Deployed to Vercel production with environment-based URL switching
 - 🔜 Broaden automated tests + add additional report/quest analytics once backends are ready
 
 ## Future Notes

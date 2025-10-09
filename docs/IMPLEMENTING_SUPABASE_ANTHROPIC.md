@@ -11,7 +11,8 @@ This document records everything needed to evolve the local-only prototype into 
 - ✅ Chat streaming with Anthropic via `/api/chat/stream` (SSE) and `/api/chat/respond` (non-streaming)
 - ✅ Expo mobile app uses shared API client with bearer tokens
 - ✅ Quests/Journey hydrate from Supabase
-- ✅ Deployed to Vercel with environment variables configured
+- ✅ Deployed to Vercel production: https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
+- ✅ Mobile app auto-switches between dev (localhost:3000) and prod URLs based on __DEV__
 
 **Phase 2 (FUTURE):**
 - 📋 Subscriptions/Payments (Stripe/RevenueCat)
@@ -112,13 +113,20 @@ Action items:
 
 ---
 
-## 5. Deployment & Runtime Checklist
+## 5. Deployment & Runtime Checklist ✅ COMPLETED
 
-1. Supply `.env.local.example` with Supabase + Anthropic keys (later include Stripe/RevenueCat if needed).
-2. Configure `next.config.js` if you need to expose Supabase env variables client-side or adjust streaming settings.
-3. Keep the local analytics inspector until you install a full telemetry provider (e.g., PostHog).
-4. Validate end-to-end flows with real data: onboarding → reports → chat → quests → journey.
-5. Deploy to Vercel (or similar) and point environment variables at the Supabase project.
+1. ✅ `.env` configured with Supabase + Anthropic keys
+2. ✅ `next.config.js` configured for Supabase env variables
+3. ✅ Local analytics inspector active for debugging
+4. ✅ End-to-end flows validated: onboarding → reports → chat → quests → journey
+5. ✅ Deployed to Vercel production: https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
+   - All environment variables configured in Vercel dashboard
+   - Root Directory set to `apps/web`
+   - Monorepo build commands configured in `vercel.json`
+6. ✅ Mobile app environment-based URL switching:
+   - Development: `http://localhost:3000` (via `EXPO_PUBLIC_API_BASE_URL_DEV`)
+   - Production: Vercel URL (via `EXPO_PUBLIC_API_BASE_URL_PROD`)
+   - Automatic switching based on `__DEV__` flag
 
 ---
 
