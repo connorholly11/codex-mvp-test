@@ -1,4 +1,4 @@
-type AnalyticsEvent = {
+export type AnalyticsEvent = {
   name: string;
   payload?: Record<string, unknown>;
   timestamp: string;

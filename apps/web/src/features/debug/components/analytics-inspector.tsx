@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getEvents, clearEvents } from '@/lib/analytics';
+import { getEvents, clearEvents, type AnalyticsEvent } from '@/lib/analytics';
 
 export function AnalyticsInspector() {
-  const [events, setEvents] = useState(() => []);
+  const [events, setEvents] = useState<AnalyticsEvent[]>([]);
 
   const refresh = () => {
     setEvents(getEvents());

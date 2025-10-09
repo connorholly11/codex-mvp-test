@@ -104,6 +104,8 @@ Action items:
 
 ---
 
+> **MVP Scope Reminder:** start with Next.js (Vercel), Supabase, Expo/React Native, and Anthropic only. Stripe/RevenueCat paywalls, PostHog analytics, and a dedicated Chat Gateway can come later once the core loop is validated. Add Sentry early if you want error telemetry, but it’s optional on day one.
+
 ## 6. Subscriptions & Payments (Future)
 
 - **Stripe** (for web checkout) and **RevenueCat** (for cross-platform entitlements) both work inside Next.js API routes.

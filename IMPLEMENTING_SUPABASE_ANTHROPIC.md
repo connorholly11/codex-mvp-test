@@ -113,6 +113,8 @@ This document outlines the changes required to evolve the current local-only pro
 - Snapshot/testing: write Playwright tests that stub Anthropic and Supabase to cover onboarding, chat streaming, and report viewing.
 - Gradually replace local analytics inspector with a real telemetry provider once metrics are defined.
 
+> **MVP Scope Reminder:** The first public cut needs only Next.js (deployed on Vercel), Supabase, Expo/React Native, and Anthropic. Stripe/RevenueCat (subscriptions), PostHog (analytics), and a dedicated Chat Gateway can wait until after we validate the core loop. We can add Sentry early if we want error telemetry, but it’s optional for the initial release.
+
 ---
 
 ## 7. Scaling & Streaming Strategy
