@@ -2,13 +2,31 @@
 
 This document records everything needed to evolve the local-only prototype into a production-ready web MVP powered by Supabase (auth + persistence) and Anthropic (coaching responses). It also folds in decisions about subscriptions, analytics, voice, and scaling so we have a single reference.
 
+## ✅ Implementation Status
+
+**Phase 1 (COMPLETED):**
+- ✅ Supabase project created and configured (`codex-mvp`, ref: `qovxpxqozlcsvynmtham`)
+- ✅ Schema migrations applied (`profiles`, `assessments`, `chat_sessions`, `chat_messages`, `reports`, `quests_progress`)
+- ✅ Web onboarding submits to Supabase via `/api/onboarding`
+- ✅ Chat streaming with Anthropic via `/api/chat/stream` (SSE) and `/api/chat/respond` (non-streaming)
+- ✅ Expo mobile app uses shared API client with bearer tokens
+- ✅ Quests/Journey hydrate from Supabase
+- ✅ Deployed to Vercel with environment variables configured
+
+**Phase 2 (FUTURE):**
+- 📋 Subscriptions/Payments (Stripe/RevenueCat)
+- 📋 Analytics (PostHog/Sentry)
+- 📋 Voice (STT/TTS)
+- 📋 Background jobs (Supabase cron)
+- 📋 Dedicated Chat Gateway (when concurrency > ~600)
+
 ---
 
 ## 1. Replace Local Stores with Supabase Persistence
 
-### Current state
-- Onboarding data, chat history, quests, and reports live inside Zustand stores backed by `localStorage`.
-- Chat replies are simulated from onboarding summaries; nothing touches a server.
+### Current state ✅ IMPLEMENTED
+- Web onboarding, chat, quests, and journey all hydrate from Supabase.
+- Expo mobile uses the shared API client with bearer tokens.
 
 ### Target state
 - All user-specific state resides in Supabase Postgres with Row-Level Security (RLS).
