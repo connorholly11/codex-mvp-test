@@ -64,6 +64,14 @@ Supabase treats each unique email as a distinct user. To reuse a single inbox wh
 2. Confirm `quests_progress` shows the completion and `/journey` reflects updated stats.
 3. Optional: call `/api/quests` manually (curl or REST client) to inspect JSON payload.
 
+## Unit Tests
+
+Run `pnpm test:run` from the repo root to validate:
+- Personal insights generation/parsing
+- Onboarding payload/reflection validation (Zod schemas)
+- API client streaming/event handling
+- Next.js API routes for onboarding and chat (Supabase/Anthropic mocked, includes error coverage)
+
 ## Regression Checklist
 
 - [ ] Web onboarding + report generation

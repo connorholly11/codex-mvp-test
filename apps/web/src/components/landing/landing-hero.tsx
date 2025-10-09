@@ -28,15 +28,14 @@ export function LandingHero() {
     <>
       <section className="flex flex-col gap-6 rounded-2xl bg-surface px-6 py-8 shadow-lg shadow-black/10 sm:rounded-3xl sm:px-8 sm:py-10 md:p-12">
         <span className="text-sm font-medium uppercase tracking-[0.25em] text-muted">
-          Internal Prototype
+          MVP Sandbox
         </span>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-          Build the Purpose web experience from the ground up.
+          Preview the Purpose coaching experience on the web.
         </h1>
         <p className="max-w-2xl text-lg text-muted">
-          This environment is a sandbox for exploring the browser version of Purpose.
-          All state lives locally, and the only external dependency we plan to use is
-          the Anthropic API for coaching intelligence.
+          This build persists onboarding, chat, and reports to Supabase and streams guidance from Anthropic’s Claude Sonnet.
+          Use it to walk through the full flow before we open access more broadly.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
           <button
@@ -44,7 +43,7 @@ export function LandingHero() {
             onClick={handleBegin}
             className="inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
           >
-            Begin onboarding prototype
+            Start onboarding
           </button>
           <a
             href="/docs"

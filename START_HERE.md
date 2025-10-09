@@ -3,11 +3,15 @@
 ## One-Sentence Status
 Web onboarding and chat now persist to Supabase and stream replies from Anthropic; mobile app uses shared API client with automatic dev/prod URL switching; deployed to Vercel production.
 
+## Deployments
+- **Web (Next.js → Vercel):** https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
+- **Mobile (Expo iOS sandbox):** Run locally with Expo Go; iOS is the only supported target for now (Android build is TBD).
+
 ## Install & Run
 ```bash
 pnpm install
 pnpm dev:web        # http://localhost:3000 (Next.js)
-pnpm dev:mobile     # Expo dev server (sign-in uses Supabase magic codes)
+pnpm dev:mobile     # Expo dev server (iOS via Expo Go; signs in with Supabase magic codes)
 ```
 
 > ⚠️ Never commit real API keys, passwords, or tokens to Git. Keep actual values in local `.env*` files only.
@@ -27,6 +31,17 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
 EXPO_PUBLIC_API_BASE_URL_DEV=http://localhost:3000
 EXPO_PUBLIC_API_BASE_URL_PROD=<YOUR_PRODUCTION_SITE_URL>
 ```
+
+## Tests
+```bash
+pnpm test           # watch mode
+pnpm test:run       # CI-friendly single run
+```
+The current suite covers:
+- Personal insights generation/parsing
+- Onboarding payload/reflection schemas (Zod)
+- Shared API client streaming/parsing helpers
+- Next.js API routes (`/api/onboarding`, `/api/chat/respond`) with mocked Supabase + Anthropic (success + error paths)
 
 ## Supabase Setup
 

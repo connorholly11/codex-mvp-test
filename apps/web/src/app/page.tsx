@@ -24,15 +24,15 @@ export default function Home() {
 
 const PANELS = [
   {
-    title: "Local-first foundation",
-    body: "Persist onboarding progress, chat history, and reports in local storage so the prototype mirrors a full product flow without external infrastructure.",
+    title: "Supabase-backed foundation",
+    body: "Onboarding progress, chat sessions, quests, and reports now persist to Supabase so web mirrors the production data model.",
   },
   {
-    title: "Anthropic-ready",
-    body: "The only required environment variable will be the Anthropic API key, keeping integration friction low while allowing realistic coaching conversations.",
+    title: "Anthropic coaching",
+    body: "Fermi runs on Claude 3.5 Sonnet with a configurable system prompt for compassionate, direct guidance.",
   },
   {
-    title: "Feature-parity roadmap",
-    body: "Onboarding, chat, quests, and insights map directly to the mobile spec so we can evaluate the web UX quickly and iterate in place.",
+    title: "Web + iOS parity",
+    body: "The Next.js app and the Expo iOS client share the same API layer, keeping messaging and reports consistent across platforms.",
   },
 ];
