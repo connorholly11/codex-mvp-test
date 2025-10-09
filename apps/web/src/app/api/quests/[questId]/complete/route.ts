@@ -10,13 +10,16 @@ const payloadSchema = z.object({
 
 export const runtime = 'nodejs';
 
-export async function POST(request: NextRequest, { params }: { params: { questId: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ questId: string }> },
+) {
+  const { questId } = await context.params;
   const auth = await getAuthenticatedSupabase(request);
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const questId = params.questId;
   const quest = QUESTS.find((item) => item.id === questId);
   if (!quest) {
     return NextResponse.json({ error: 'Quest not found' }, { status: 404 });
