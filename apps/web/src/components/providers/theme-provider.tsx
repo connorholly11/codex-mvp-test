@@ -22,9 +22,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const STORAGE_KEY = 'purpose-theme-mode';
 
+const DEFAULT_THEME: ThemeMode = 'light';
+
 function getPreferredTheme(): ThemeMode {
   if (typeof window === 'undefined') {
-    return 'dark';
+    return DEFAULT_THEME;
   }
 
   const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
@@ -32,8 +34,7 @@ function getPreferredTheme(): ThemeMode {
     return stored;
   }
 
-  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? 'dark' : 'light';
+  return DEFAULT_THEME;
 }
 
 function applyTheme(mode: ThemeMode) {
@@ -81,6 +82,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
+
+export const THEME_DEFAULT = DEFAULT_THEME;
 
 export function useTheme() {
   const ctx = useContext(ThemeContext);

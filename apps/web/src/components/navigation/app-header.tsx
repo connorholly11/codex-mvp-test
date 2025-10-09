@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useSessionStore } from '@/store/use-session-store';
 import { useChatStore } from '@/store/use-chat-store';
 import { useOnboardingStore } from '@/store/use-onboarding-store';
@@ -100,7 +99,6 @@ export function AppHeader() {
               Start assessment
             </Link>
           ) : null}
-          <ThemeToggle />
         </div>
       </div>
       {menuOpen ? (

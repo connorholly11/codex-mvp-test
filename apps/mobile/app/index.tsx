@@ -21,9 +21,15 @@ import {
 import { supabase } from '../lib/supabase';
 import { useSessionStore } from '../state/useSessionStore';
 
-const PRIMARY_BG = '#070609';
-const SURFACE = '#15161E';
-const ACCENT = '#5d1bed';
+const PRIMARY_BG = '#F5F6FB';
+const SURFACE = '#FFFFFF';
+const ACCENT = '#4338CA';
+const SURFACE_MUTED = '#EEF0FF';
+const TEXT_PRIMARY = '#1F1D2B';
+const TEXT_MUTED = 'rgba(31, 29, 43, 0.65)';
+const TEXT_INVERTED = '#FFFFFF';
+const BORDER_MUTED = 'rgba(31, 29, 43, 0.08)';
+const ERROR_TEXT = '#B91C1C';
 
 export default function ScreenRouter() {
   const status = useSessionStore((state) => state.status);
@@ -111,7 +117,7 @@ function AuthScreen() {
         <TextInput
           style={styles.authInput}
           placeholder="you@example.com"
-          placeholderTextColor="rgba(255,255,255,0.5)"
+          placeholderTextColor={TEXT_MUTED}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -123,7 +129,7 @@ function AuthScreen() {
           <TextInput
             style={styles.authInput}
             placeholder="6-digit code"
-            placeholderTextColor="rgba(255,255,255,0.5)"
+            placeholderTextColor={TEXT_MUTED}
             keyboardType="number-pad"
             autoCapitalize="none"
             autoCorrect={false}
@@ -403,12 +409,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   chatTitle: {
-    color: '#fff',
+    color: TEXT_PRIMARY,
     fontSize: 22,
     fontWeight: '700',
   },
   chatSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
+    color: TEXT_MUTED,
     fontSize: 13,
   },
   listContent: {
@@ -434,28 +440,31 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
   assistantBubble: {
-    backgroundColor: SURFACE,
+    backgroundColor: SURFACE_MUTED,
   },
   pendingBubble: {
     opacity: 0.6,
   },
   messageText: {
-    color: 'white',
+    color: TEXT_PRIMARY,
     fontSize: 16,
     lineHeight: 22,
   },
   userText: {
     fontWeight: '600',
+    color: TEXT_INVERTED,
   },
   composer: {
     borderRadius: 24,
     backgroundColor: SURFACE,
     padding: 12,
     gap: 12,
+    borderWidth: 1,
+    borderColor: BORDER_MUTED,
   },
   input: {
     minHeight: 44,
-    color: '#fff',
+    color: TEXT_PRIMARY,
     fontSize: 16,
   },
   sendButton: {
@@ -469,7 +478,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   sendLabel: {
-    color: '#fff',
+    color: TEXT_INVERTED,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -478,7 +487,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chatError: {
-    color: '#f87171',
+    color: ERROR_TEXT,
     textAlign: 'center',
   },
   signOutButton: {
@@ -486,24 +495,28 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: BORDER_MUTED,
+    backgroundColor: SURFACE,
   },
   signOutLabel: {
-    color: '#fff',
+    color: TEXT_MUTED,
     fontSize: 12,
+    fontWeight: '600',
   },
   reportCard: {
     borderRadius: 20,
     backgroundColor: SURFACE,
     padding: 16,
     gap: 6,
+    borderWidth: 1,
+    borderColor: BORDER_MUTED,
   },
   reportTitle: {
-    color: '#fff',
+    color: TEXT_PRIMARY,
     fontWeight: '600',
   },
   reportItem: {
-    color: 'rgba(255,255,255,0.75)',
+    color: TEXT_MUTED,
     fontSize: 13,
   },
   authCard: {
@@ -512,32 +525,39 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE,
     padding: 24,
     borderRadius: 24,
+    borderWidth: 1,
+    borderColor: BORDER_MUTED,
     gap: 16,
+    shadowColor: '#121212',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   authTitle: {
-    color: '#fff',
+    color: TEXT_PRIMARY,
     fontSize: 22,
     fontWeight: '700',
   },
   authSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
+    color: TEXT_MUTED,
     fontSize: 13,
   },
   authInput: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: BORDER_MUTED,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#fff',
+    color: TEXT_PRIMARY,
     fontSize: 16,
   },
   authStatus: {
-    color: 'rgba(255,255,255,0.7)',
+    color: TEXT_MUTED,
     fontSize: 12,
   },
   authError: {
-    color: '#f87171',
+    color: ERROR_TEXT,
     fontSize: 12,
   },
   authButton: {
@@ -547,7 +567,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   authButtonLabel: {
-    color: '#fff',
+    color: TEXT_INVERTED,
     fontWeight: '600',
     fontSize: 16,
   },

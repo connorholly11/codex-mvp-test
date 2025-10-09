@@ -115,6 +115,7 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - Add Supabase RLS migrations enforcing `user_id = auth.uid()` (and session-based policies for chat messages) before onboarding external testers.
 - Layer in per-user chat rate limiting/quota once traffic extends beyond internal use.
 - Extend the automated test suite (integration coverage for `/api/onboarding`, `/api/chat/*`, quests) before the next feature wave.
+- Re-enable dark mode/parity theming once the product surfaces stabilize (currently shipping light mode only).
 - Flip the `CHAT_GATEWAY_URL` env once we deploy a dedicated streaming service.
 - Add Stripe/RevenueCat + PostHog only after the core loop proves sticky.
 - Monitor Anthropic usage; the SSE client already surfaces truncated responses when the 30s cap hits.
