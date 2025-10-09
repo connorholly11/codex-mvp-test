@@ -19,7 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@purpose/api-client": ["../../packages/api-client/src/index.ts"],
+      "@purpose/api-client/*": ["../../packages/api-client/src/*"],
+      "@purpose/ui": ["../../packages/ui/src/index.ts"],
+      "@purpose/ui/*": ["../../packages/ui/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

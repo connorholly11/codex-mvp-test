@@ -1,3 +1,5 @@
+import type { OnboardingData as SharedOnboardingData } from '@purpose/api-client/onboarding';
+
 export type GenderOption = "male" | "female" | "non-binary" | "prefer-not";
 
 export type FulfillmentDomain =
@@ -36,32 +38,9 @@ export type OnboardingStepId =
   | "legal"
   | "complete";
 
-type Demographics = {
-  age?: number;
-  gender?: GenderOption;
-  occupation?: string;
-};
+import type { OnboardingData as SharedOnboardingData } from '@purpose/api-client/onboarding';
 
-type FulfillmentRatings = Partial<Record<FulfillmentDomain, number>>;
-
-type PersonalityResponses = Partial<Record<PersonalityQuestionId, number>>;
-
-type ValuesRanking = {
-  firstRound: ValueOption[];
-  secondRound: ValueOption[];
-  finalRound: ValueOption[];
-};
-
-type ReflectionResponses = Partial<Record<ReflectionQuestionId, string>>;
-
-export type OnboardingData = {
-  demographics: Demographics;
-  fulfillment: FulfillmentRatings;
-  constraint?: string;
-  personality: PersonalityResponses;
-  values: ValuesRanking;
-  reflections: ReflectionResponses;
-};
+export type OnboardingData = SharedOnboardingData;
 
 export type OnboardingUpdateFn = (updater: (draft: OnboardingData) => void) => void;
 
@@ -80,4 +59,6 @@ export type OnboardingStepComponentProps = {
   onContinue: () => void;
   onBack?: () => void;
   updateData: OnboardingUpdateFn;
+  isSubmitting?: boolean;
+  submissionError?: string | null;
 };

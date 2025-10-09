@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import type { OnboardingData } from '@/features/onboarding/types';
-import { generatePersonalInsights } from '@/lib/reports';
+import type { PersonalInsightsReport } from '@/lib/reports';
 
+export function YouReportCard({ report }: { report: PersonalInsightsReport | null }) {
+  if (!report) {
+    return null;
+  }
 
-export function YouReportCard({ data }: { data: OnboardingData }) {
-  const summary = generatePersonalInsights(data);
+  const summary = report.summary;
 
   return (
     <div className="rounded-2xl border border-border bg-surface-muted px-5 py-6 shadow-sm sm:rounded-3xl sm:p-6">
@@ -63,4 +65,3 @@ export function YouReportCard({ data }: { data: OnboardingData }) {
     </div>
   );
 }
-

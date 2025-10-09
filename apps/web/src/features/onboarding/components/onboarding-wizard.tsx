@@ -48,9 +48,11 @@ const STEP_COMPONENTS: Record<OnboardingStepId, (props: OnboardingStepComponentP
 
 type OnboardingWizardProps = {
   onComplete: () => void;
+  isSubmitting?: boolean;
+  submissionError?: string | null;
 };
 
-export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
+export function OnboardingWizard({ onComplete, isSubmitting, submissionError }: OnboardingWizardProps) {
   const { step, data, setStep, markStepComplete, updateData, reset } = useOnboardingStore();
 
   const index = useMemo(() => STEP_SEQUENCE.indexOf(step), [step]);
@@ -106,6 +108,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       <StepComponent
         data={data}
         updateData={updateData}
+        isSubmitting={isSubmitting}
+        submissionError={submissionError}
         onContinue={() => {
           if (step === 'complete') {
             onComplete();

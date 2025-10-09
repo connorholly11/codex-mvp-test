@@ -7,8 +7,8 @@ This document outlines the changes required to evolve the current local-only pro
 ## 1. Replace Local Stores with Supabase Persistence
 
 ### Current State
-- Onboarding data, chat history, quests, and reports live inside Zustand stores with `localStorage` persistence.
-- Chat responses are simulated locally from onboarding summaries.
+- ✅ Web onboarding, chat, quests, and journey all hydrate from Supabase (`profiles`, `assessments`, `chat_sessions`, `chat_messages`, `reports`, `quests_progress`).
+- ✅ Expo mobile uses the shared API client with bearer tokens (no AsyncStorage beyond Supabase-auth persistence).
 
 ### Target State
 - All user-specific state is stored server-side in Supabase Postgres with Row-Level Security.
@@ -24,10 +24,11 @@ This document outlines the changes required to evolve the current local-only pro
    - Optional supporting tables (`quests`, `report_versions`) if you want server-defined catalogs.
 2. **Enable Row-Level Security** so each user only accesses their rows.
 3. **Update stores/hooks**:
-   - Replace local `persist` storage with Supabase reads/writes (Zustand can remain as an in-memory cache synced to Supabase).
+   - `use-onboarding-store` now runs entirely in memory (no `localStorage`); web onboarding persists immediately via `/api/onboarding`.
+   - Replace local `persist` storage for Supabase reads/writes (Zustand can remain as an in-memory cache synced to Supabase).
    - On onboarding submit, POST to `/api/onboarding` → insert assessment, generate report content server-side, store in `reports` table.
    - Chat UI becomes a client for Supabase-backed `/api/chat` (see section 2).
-   - Quest completions write to `quests_progress` instead of local arrays.
+   - Quest completions write to `quests_progress` instead of local arrays (via `/api/quests` and `/api/quests/{id}/complete`).
 4. **Sync Journey & Report views** to pull from Supabase rather than local data.
 
 **Env Vars Required**
@@ -50,13 +51,13 @@ This document outlines the changes required to evolve the current local-only pro
 - If concurrency regularly exceeds ~600 simultaneous streams or we prepare for a large launch, we can move the streaming handler into a dedicated Chat Gateway service (Fastify/Hono/Go) without touching the clients—only swap the base URL in `packages/api-client`.
 
 ### Action Items
-1. **Phase 1 – Next.js API route (`/api/chat/stream`):**
-   - Authenticate via Supabase session.
+1. **Phase 1 – Next.js API routes (`/api/chat/stream` + `/api/chat/respond`):**
+   - Authenticate via Supabase session or bearer token.
    - Write incoming user message to `chat_messages`.
    - Build model context: latest N messages + Personal Insights summary.
-   - Call Anthropic’s streaming endpoint (`ANTHROPIC_API_KEY`).
-   - Stream tokens back to the browser, sending heartbeats every 15s, and write the assistant message once streaming finishes.
-   - Enforce a 30s max duration; if the stream exceeds it, finish server-side and send a “tap to reveal final answer” callout.
+   - Call Anthropic Sonnet 3.5 (default `claude-3-5-sonnet-20241022`) with the configurable system prompt (`CHAT_SYSTEM_PROMPT`, defaults to “You are an AI coach…”).
+   - Stream tokens back to the browser (SSE) while persisting assistant output when complete.
+   - Provide a non-streaming fallback (`/api/chat/respond`) for environments without SSE (e.g., Expo mobile).
 2. **Phase 2 – Optional Chat Gateway:**
    - Mirror the same handler in a long-lived service (Fly.io, ECS, etc.) when concurrency/latency demands it.
    - Keep the client API identical; only the host/URL changes.

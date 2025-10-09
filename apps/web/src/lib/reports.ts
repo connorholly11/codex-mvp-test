@@ -17,6 +17,7 @@ export type PersonalInsightsReport = {
   title: string;
   openingInsight: string;
   sections: PersonalInsightsSection[];
+  summary: PersonalInsightsSummary;
 };
 
 const VALUE_LABELS: Record<string, string> = {
@@ -121,6 +122,7 @@ export function buildPersonalInsightsReport(data: OnboardingData): PersonalInsig
     title: 'Your Personal Insights',
     openingInsight,
     sections,
+    summary,
   };
 }
 

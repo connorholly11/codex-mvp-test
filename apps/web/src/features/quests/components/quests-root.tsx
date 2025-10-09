@@ -14,6 +14,9 @@ export function QuestsRoot() {
   const statuses = useQuestsStore((state) => state.statuses);
   const completeQuest = useQuestsStore((state) => state.completeQuest);
   const responses = useQuestsStore((state) => state.responses);
+  const initializeQuests = useQuestsStore((state) => state.initialize);
+  const questsLoading = useQuestsStore((state) => state.isLoading);
+  const questsError = useQuestsStore((state) => state.error);
 
   const [activeQuestId, setActiveQuestId] = useState<string | null>(null);
   const [celebratedQuestId, setCelebratedQuestId] = useState<string | null>(null);
@@ -23,8 +26,10 @@ export function QuestsRoot() {
   useEffect(() => {
     if (!isReady) {
       router.replace('/onboarding');
+      return;
     }
-  }, [isReady, router]);
+    void initializeQuests();
+  }, [initializeQuests, isReady, router]);
 
   const activeQuest = QUESTS.find((quest) => quest.id === activeQuestId) ?? null;
   const celebratedQuest = QUESTS.find((quest) => quest.id === celebratedQuestId) ?? null;
@@ -37,13 +42,34 @@ export function QuestsRoot() {
     );
   }
 
-  const handleComplete = (questId: string, answer: string | number) => {
-    completeQuest(questId, answer);
-    logEvent('quest_completed', { questId, answer });
-    setActiveQuestId(null);
-    setCelebratedQuestId(questId);
-    window.setTimeout(() => setCelebratedQuestId(null), 4000);
+  const handleComplete = async (questId: string, answer: string | number) => {
+    try {
+      await completeQuest(questId, answer);
+      logEvent('quest_completed', { questId, answer });
+      setActiveQuestId(null);
+      setCelebratedQuestId(questId);
+      window.setTimeout(() => setCelebratedQuestId(null), 4000);
+    } catch (error) {
+      console.error('Failed to complete quest', error);
+      alert('Unable to save that quest right now. Please try again.');
+    }
   };
+
+  if (questsLoading) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface px-6 py-8 text-sm text-muted sm:rounded-3xl sm:p-10">
+        Loading quests…
+      </div>
+    );
+  }
+
+  if (questsError) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface px-6 py-8 text-sm text-muted sm:rounded-3xl sm:p-10">
+        {questsError}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,9 +156,9 @@ export function QuestsRoot() {
       <QuestModal
         quest={activeQuest}
         onClose={() => setActiveQuestId(null)}
-        onComplete={(answer) => {
+        onComplete={async (answer) => {
           if (activeQuest) {
-            handleComplete(activeQuest.id, answer);
+            await handleComplete(activeQuest.id, answer);
           }
         }}
       />

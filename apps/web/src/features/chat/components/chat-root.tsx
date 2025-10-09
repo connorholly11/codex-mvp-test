@@ -1,45 +1,108 @@
 'use client';
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FormEvent,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useRouter } from 'next/navigation';
-import { useChatStore } from '@/store/use-chat-store';
-import { useOnboardingStore } from '@/store/use-onboarding-store';
-import { useSessionStore } from '@/store/use-session-store';
+import {
+  fetchChatHistory,
+  streamChatMessage,
+  type ChatMessage,
+  type PersonalInsightsReport,
+} from '@purpose/api-client';
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser-client';
 import { YouReportCard } from '@/features/chat/components/you-report-card';
-import type { ChatMessage } from '@/store/use-chat-store';
-import type { OnboardingData } from '@/features/onboarding/types';
-import { generatePersonalInsights, buildPersonalInsightsReport } from '@/lib/reports';
-import { logEvent } from '@/lib/analytics';
+import { useChatStore } from '@/store/use-chat-store';
+import { useSessionStore } from '@/store/use-session-store';
 
 export function ChatRoot() {
   const router = useRouter();
-  const onboardingData = useOnboardingStore((state) => state.data);
-  const messages = useChatStore((state) => state.messages);
-  const appendMessage = useChatStore((state) => state.appendMessage);
-  const updateMessage = useChatStore((state) => state.updateMessage);
-  const user = useSessionStore((state) => state.user);
-
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<PersonalInsightsReport | null>(null);
+
+  const { user, setUser, updateUser } = useSessionStore();
+  const { setSessionId, messages, setMessages, appendMessage, updateMessage } =
+    useChatStore();
+
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function bootstrap() {
+      try {
+        setIsLoading(true);
+        const [history, auth] = await Promise.all([
+          fetchChatHistory(),
+          supabase.auth.getUser(),
+        , router]);
+
+        if (!active) {
+          return;
+        }
+
+        setSessionId(history.chatSessionId);
+        setMessages(history.messages);
+        setReport(
+          history.report?.content
+            ? (history.report.content as PersonalInsightsReport)
+            : null,
+        );
+
+        if (auth.data.user) {
+          setUser({
+            id: auth.data.user.id,
+            email: auth.data.user.email ?? '',
+            displayName:
+              history.profile?.display_name ??
+              (auth.data.user.user_metadata?.full_name as string | null) ??
+              null,
+            legalAcceptedAt: history.profile?.legal_acceptance_at ?? null,
+          });
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        console.error('Failed to load chat history', error);
+        const message = error instanceof Error ? error.message : 'Failed to load chat';
+        if (message.toLowerCase().includes('unauthorized')) {
+          router.replace('/onboarding');
+          return;
+        }
+        setError(message);
+        setIsLoading(false);
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      active = false;
+    };
+  }, [router, setMessages, setSessionId, setUser, supabase]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isStreaming]);
 
   useEffect(() => {
     if (!user?.legalAcceptedAt) {
       router.replace('/onboarding');
     }
   }, [router, user?.legalAcceptedAt]);
-
-  useEffect(() => {
-    if (messages.length === 0 && user?.legalAcceptedAt) {
-      const greeting = buildGreeting(onboardingData, user?.name ?? 'there');
-      appendMessage(createMessage('assistant', greeting, { type: 'greeting' }));
-      injectReportMessages(onboardingData, appendMessage, messages);
-    }
-  }, [messages, appendMessage, onboardingData, user?.name, user?.legalAcceptedAt]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isStreaming]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,54 +116,127 @@ export function ChatRoot() {
     }
   };
 
-  const sendMessage = () => {
+  const sendMessage = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) {
       return;
     }
+
     setInput('');
-    const userMessage = createMessage('user', trimmed);
-    appendMessage(userMessage);
-    logEvent('chat_message_sent', { length: trimmed.length });
-    setIsStreaming(true);
 
-    const assistantId = randomId('assistant');
-    const placeholder = { ...createMessage('assistant', ''), id: assistantId };
-    placeholder.pending = true;
-    appendMessage(placeholder);
+    const now = new Date().toISOString();
+    const tempUserId = crypto.randomUUID();
+    const tempAssistantId = crypto.randomUUID();
 
-    const responseSegments = buildAssistantResponse(trimmed, onboardingData);
-    const [primary, ...rest] = responseSegments;
-    if (!primary) {
-      setIsStreaming(false);
-      return;
-    }
-
-    streamMessage(primary, assistantId, updateMessage, () => {
-      const totalLength = responseSegments.reduce((sum, segment) => sum + segment.length, 0);
-      logEvent('chat_response_completed', {
-        length: totalLength,
-        segments: responseSegments.length,
-      });
-
-      if (rest.length > 0) {
-        rest.forEach((segment, index) => {
-          window.setTimeout(() => {
-            appendMessage(createMessage('assistant', segment));
-          }, (index + 1) * 350);
-        });
-      }
-
-      setIsStreaming(false);
+    appendMessage({
+      id: tempUserId,
+      role: 'user',
+      content: trimmed,
+      createdAt: now,
     });
-  };
+
+    appendMessage({
+      id: tempAssistantId,
+      role: 'assistant',
+      content: '',
+      createdAt: now,
+      pending: true,
+    });
+
+    setIsStreaming(true);
+    let assistantBuffer = '';
+    let currentAssistantId = tempAssistantId;
+
+    streamChatMessage(trimmed, {
+      onAck: ({ userMessageId, createdAt }) => {
+        updateMessage(tempUserId, {
+          id: userMessageId,
+          createdAt,
+        });
+      },
+      onToken: (token) => {
+        assistantBuffer += token;
+        updateMessage(currentAssistantId, {
+          content: assistantBuffer,
+        });
+      },
+      onFinal: ({ assistantMessageId, createdAt, metadata }) => {
+        currentAssistantId = assistantMessageId;
+        updateMessage(tempAssistantId, {
+          id: assistantMessageId,
+          createdAt: createdAt ?? new Date().toISOString(),
+          metadata: metadata ?? undefined,
+          pending: false,
+        });
+      },
+      onDone: () => {
+        setIsStreaming(false);
+      },
+      onError: (error) => {
+        console.error('Streaming error', error);
+        updateMessage(currentAssistantId, {
+          content: assistantBuffer
+            ? `${assistantBuffer}\n\n_(Response truncated due to an error.)_`
+            : 'I hit a snag while replying. Try sending that again?',
+          pending: false,
+        });
+      },
+    })
+      .catch((error) => {
+        console.error('Failed to stream message', error);
+        updateMessage(tempAssistantId, {
+          content: 'I had trouble responding. Try again in a moment.',
+          pending: false,
+        });
+        setIsStreaming(false);
+      })
+      .finally(async () => {
+        try {
+          const latest = await fetchChatHistory();
+          setMessages(latest.messages);
+          setReport(
+            latest.report?.content
+              ? (latest.report.content as PersonalInsightsReport)
+              : report,
+          );
+          if (latest.profile?.legal_acceptance_at) {
+            updateUser({ legalAcceptedAt: latest.profile.legal_acceptance_at });
+          }
+        } catch (error) {
+          console.warn('Failed to refresh chat history after streaming', error);
+        }
+      });
+  }, [appendMessage, input, isStreaming, report, setMessages, updateMessage, updateUser]);
 
   const headerSubtitle = useMemo(() => {
-    if (!user?.name) {
-      return 'Prototype chat experience';
+    if (!user?.displayName) {
+      return 'Coaching preview';
     }
-    return `Chatting as ${user.name}`;
-  }, [user?.name]);
+    return `Chatting as ${user.displayName}`;
+  }, [user?.displayName]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-sm text-muted">Loading your conversation…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-sm text-muted">{error}</p>
+        <button
+          type="button"
+          onClick={() => router.refresh()}
+          className="rounded-full border border-border px-4 py-2 text-sm text-foreground transition hover:bg-surface-muted"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[70vh] flex-col gap-6 md:h-[calc(100vh-200px)]">
@@ -109,7 +245,7 @@ export function ChatRoot() {
         <p className="text-sm text-muted">{headerSubtitle}</p>
       </header>
 
-      <YouReportCard data={onboardingData} />
+      <YouReportCard report={report} />
 
       <div className="flex-1 overflow-hidden rounded-2xl border border-border bg-surface sm:rounded-3xl">
         <div className="flex h-full flex-col">
@@ -165,7 +301,7 @@ function TypingIndicator() {
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({ message }: { message: ChatMessage & { pending?: boolean } }) {
   const isUser = message.role === 'user';
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -180,108 +316,4 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       </div>
     </div>
   );
-}
-
-function createMessage(
-  role: 'user' | 'assistant',
-  content: string,
-  metadata?: Record<string, unknown>,
-): ChatMessage {
-  return {
-    id: randomId(role),
-    role,
-    content,
-    createdAt: new Date().toISOString(),
-    metadata,
-  };
-}
-
-function streamMessage(
-  fullText: string,
-  id: string,
-  updateMessage: (id: string, patch: Partial<ChatMessage>) => void,
-  done: () => void,
-) {
-  const tokens = fullText.split(/(\s+)/).filter(Boolean);
-  let index = 0;
-  const interval = window.setInterval(() => {
-    index += 1;
-    const partial = tokens.slice(0, index).join('');
-    updateMessage(id, { content: partial });
-    if (index >= tokens.length) {
-      window.clearInterval(interval);
-      updateMessage(id, { pending: false });
-      done();
-    }
-  }, 90);
-}
-
-function buildGreeting(data: OnboardingData, name: string) {
-  const summary = generatePersonalInsights(data);
-  const focus = summary.topValueLabel?.toLowerCase() ?? 'what matters most to you';
-  return `Hey ${name}, I’m Fermi. I’ve reviewed your assessment and I’m ready to help you focus on ${focus} while making progress where it feels toughest.`;
-}
-
-function buildAssistantResponse(input: string, data: OnboardingData) {
-  const summary = generatePersonalInsights(data);
-  const focusArea = summary.growthAreaLabel?.toLowerCase() ?? 'the area that matters most';
-  const constraint = summary.constraint;
-
-  const opening = constraint
-    ? `You mentioned that “${constraint}” is holding you back.`
-    : `Thanks for sharing that.`;
-
-  const second = `Let’s look at ${focusArea} and identify one small move you could make today. What feels like the next honest experiment you could try, even if it’s just a five-minute action?`;
-
-  const third = summary.topValueLabel
-    ? `Keep ${summary.topValueLabel.toLowerCase()} front and centre while you test it—alignment beats hustle.`
-    : `As you test ideas, notice which ones feel genuinely energising versus performative.`;
-
-  return [opening, second, third];
-}
-
-function injectReportMessages(
-  data: OnboardingData,
-  appendMessage: (message: ChatMessage) => void,
-  existingMessages: ChatMessage[],
-) {
-  const hasReport = existingMessages.some((message) => message.metadata?.type === 'report-intro');
-  if (hasReport) {
-    return;
-  }
-
-  const report = buildPersonalInsightsReport(data);
-  appendMessage(
-    createMessage(
-      'assistant',
-      `Here’s the personalised report I created for you. I’ll keep referencing these highlights as we work together.`,
-      { type: 'report-intro', reportId: 'personal-insights' },
-    ),
-  );
-
-  report.sections.forEach((section, index) => {
-    const plainContent = section.content.replace(/\*\*/g, '');
-    appendMessage(
-      createMessage(
-        'assistant',
-        `${section.title}:\n${plainContent}`,
-        { type: 'report-section', reportId: 'personal-insights', sectionId: section.id, order: index },
-      ),
-    );
-  });
-
-  appendMessage(
-    createMessage(
-      'assistant',
-      'You can open the full Personal Insights report anytime from the card above or the Reports section.',
-      { type: 'report-cta' },
-    ),
-  );
-}
-
-function randomId(prefix: string) {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

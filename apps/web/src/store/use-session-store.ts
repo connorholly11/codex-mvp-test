@@ -1,41 +1,30 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-export type PrototypeUser = {
+export type SessionUser = {
   id: string;
-  name: string;
   email: string;
-  legalAcceptedAt?: string;
+  displayName: string | null;
+  legalAcceptedAt: string | null;
 };
 
 type SessionState = {
-  user: PrototypeUser | null;
-  setUser: (user: PrototypeUser) => void;
-  updateUser: (patch: Partial<PrototypeUser>) => void;
+  user: SessionUser | null;
+  setUser: (user: SessionUser) => void;
+  updateUser: (patch: Partial<SessionUser>) => void;
   clearUser: () => void;
 };
 
-const STORE_KEY = 'purpose-session-v1';
-
-export const useSessionStore = create<SessionState>()(
-  persist(
-    (set) => ({
-      user: null,
-      setUser: (user) => set({ user }),
-      updateUser: (patch) =>
-        set((state) => {
-          if (!state.user) {
-            return state;
-          }
-          return { user: { ...state.user, ...patch } };
-        }),
-      clearUser: () => set({ user: null }),
+export const useSessionStore = create<SessionState>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+  updateUser: (patch) =>
+    set((state) => {
+      if (!state.user) {
+        return state;
+      }
+      return { user: { ...state.user, ...patch } };
     }),
-    {
-      name: STORE_KEY,
-      version: 1,
-    },
-  ),
-);
+  clearUser: () => set({ user: null }),
+}));

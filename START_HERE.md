@@ -1,13 +1,28 @@
 # Start Here
 
 ## One-Sentence Status
-Web (Next.js) and mobile (Expo) shells are in place; Supabase/Anthropic integration is outlined but not yet wired. You can start building the real backend flows immediately.
+Web onboarding and chat now persist to Supabase and stream replies from Anthropic; mobile still points at the shared API client but hasn’t been wired yet.
 
 ## Install & Run
 ```bash
 pnpm install
-pnpm dev:web        # http://localhost:3000
-pnpm dev:mobile     # starts Expo dev server
+pnpm dev:web        # http://localhost:3000 (Next.js)
+pnpm dev:mobile     # Expo dev server (sign-in uses Supabase magic codes)
+```
+
+Set these environment variables (see `.env`, `.env.local`, `.env.production`, and Expo `.env`):
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+SUPABASE_DB_PASSWORD=CodexMVP2025SecurePass!
+ANTHROPIC_API_KEY=sk-ant-api03-...
+CHAT_SYSTEM_PROMPT="You are an AI coach. Speak with compassionate candor..."    # optional override
+
+# Expo (mobile)
+EXPO_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000            # or deployed web URL
 ```
 
 ## Supabase Setup
@@ -22,7 +37,7 @@ pnpm dev:mobile     # starts Expo dev server
 All credentials are in `.env` and `.env.local`:
 ```bash
 # Anthropic (for AI chat/reports)
-ANTHROPIC_API_KEY=sk-ant-api03-ZUbtoXFY69elG... (already configured)
+ANTHROPIC_API_KEY=sk-ant-api03-ZUbtoXFY69elG...
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://qovxpxqozlcsvynmtham.supabase.co
@@ -38,47 +53,45 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
    ```bash
    supabase migration new add_table_name
    ```
-
 2. Write SQL in `supabase/migrations/XXXXXXXX_add_table_name.sql`
-
 3. Apply to linked cloud project:
    ```bash
    supabase db push --linked
    ```
-
 4. Commit the migration file to Git
 
 **Data Access:**
-- Use **Supabase JS client** (already in `packages/api-client`)
-- Shared Zod schemas for type safety across web & mobile
-- No ORM needed initially—add Drizzle/Prisma later only if DX demands it
+- Next.js API routes use the authenticated Supabase client (RLS enforced)
+- Shared API helpers live in `packages/api-client` (see `src/web.ts`)
+- Anthropic streaming is handled in `/api/chat/stream` with SSE token events (`ack`, `token`, `final`, `done`)
 
-## MVP Tech Stack (for launch)
-- **Web:** Next.js 15 (App Router) deployed on Vercel.
-- **Mobile:** Expo React Native (iOS first) via EAS.
-- **Backend services:** Supabase Postgres + Auth; Anthropic for AI replies.
-- **Optional early:** Sentry for error tracking.
-- **Later phases:** Stripe/RevenueCat paywalls, PostHog analytics, dedicated Chat Gateway (Fastify/Hono) when concurrency > ~600.
+## MVP Tech Stack (current)
+- **Web:** Next.js 15 (App Router) → Vercel
+- **Mobile:** Expo React Native (still using local prototype state until APIs are consumed)
+- **Backend services:** Supabase Postgres/Auth; Anthropic for chat/report generation
+- **Optional early:** Sentry for error tracking
+- **Deferred:** Stripe/RevenueCat paywalls, PostHog analytics, dedicated Chat Gateway (enable when sustained streaming concurrency > ~600)
 
-## Where to Start Coding
-1. **Replace local stores with Supabase** – see `IMPLEMENTING_SUPABASE_ANTHROPIC.md` (root) for schema + action items.
-2. **Build `/api/chat/stream`** – Node runtime route in `apps/web/src/app/api`. Keep streams ≤ 30s, send 15s heartbeats. Use `packages/api-client` for the client call.
-3. **Wire onboarding/report flows** – components under `apps/web/src/features/onboarding` and `.../chat`. Persist via Supabase once the client is hooked up.
-4. **Mobile app** – matches the web call pattern; once `packages/api-client` hits Supabase/Anthropic, mobile automatically benefits.
+## Where to Build Next
+1. **Mobile parity follow-ups** – the Expo app now signs in and chats against Supabase/Anthropic. Next steps are polishing UX (deep linking, push, offline) and wiring additional surfaces (quests, journey) when needed.
+2. **Quests & Journey** – both views hydrate from Supabase today; expand analytics and timeline visuals as new data arrives.
+3. **Reports UI** – personal insights viewer loads from Supabase; extend to weekly/monthly reports when those backends ship.
+4. **Testing** – add Vitest/Playwright coverage for `/api/onboarding`, `/api/chat/*`, and the new quests endpoints (mock Anthropic+Supabase where possible).
 
-## Key Docs & References
-- `IMPLEMENTING_SUPABASE_ANTHROPIC.md` (root): step-by-step plan + phased streaming guidance.
-- `docs/IMPLEMENTING_SUPABASE_ANTHROPIC.md`: long-form reference (auth, voice, scaling, etc.).
-- `docs/MONOREPO_MANAGEMENT.md`: pnpm workspace commands, conventions.
+## Useful Docs
+- `IMPLEMENTING_SUPABASE_ANTHROPIC.md` (root): architecture + scaling notes (now partially complete).
+- `docs/IMPLEMENTING_SUPABASE_ANTHROPIC.md`: long-form reference for auth, streaming, and future phases.
+- `docs/MONOREPO_MANAGEMENT.md`: pnpm workspace commands/conventions.
 
-## Immediate Next Steps (suggested)
-- ✅ ~~Create Supabase project, apply schema, wire env vars locally~~ (DONE)
-- Create initial schema migrations (users, messages, sessions tables)
-- Implement `/api/onboarding` → save assessment + generate "You Report" (can stub Anthropic response initially).
-- Implement `/api/chat/stream` → basic streaming using Anthropic; store messages in Supabase.
-- Update web/mobile clients to use the real APIs via `packages/api-client`.
+## Status Checklist
+- ✅ Supabase schema + migrations applied (including quest progress indexes)
+- ✅ Web onboarding submits to Supabase, seeds initial chat + report
+- ✅ Web chat streams via Anthropic (SSE) with configurable system prompt + Sonnet 3.5
+- ✅ Expo mobile app signs in (email OTP) and chats via Supabase/Anthropic (non-streaming endpoint)
+- ✅ Quests/Journey hydrate from Supabase (no local storage persistence remains)
+- 🔜 Broaden automated tests + add additional report/quest analytics once backends are ready
 
-## Future Yourself Notes
-- When concurrency or launches demand it, drop in the Chat Gateway (see docs) and just flip `CHAT_GATEWAY_URL`.
-- Payments/analytics are intentionally deferred—add them only after the core loop is validated.
-- Keep an eye on LLM costs; distilled memory + capped context are non-negotiable once real data flows.
+## Future Notes
+- Flip the `CHAT_GATEWAY_URL` env once we deploy a dedicated streaming service.
+- Add Stripe/RevenueCat + PostHog only after the core loop proves sticky.
+- Monitor Anthropic usage; the SSE client already surfaces truncated responses when the 30s cap hits.

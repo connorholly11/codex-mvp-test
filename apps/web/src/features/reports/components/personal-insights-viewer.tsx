@@ -1,36 +1,74 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useOnboardingStore } from '@/store/use-onboarding-store';
-import { useSessionStore } from '@/store/use-session-store';
-import { buildPersonalInsightsReport } from '@/lib/reports';
+import { fetchChatHistory, type PersonalInsightsReport } from '@purpose/api-client';
 import { logEvent } from '@/lib/analytics';
 
 export function PersonalInsightsViewer() {
   const router = useRouter();
-  const data = useOnboardingStore((state) => state.data);
-  const user = useSessionStore((state) => state.user);
-
-  const isReady = Boolean(user?.legalAcceptedAt);
+  const [report, setReport] = useState<PersonalInsightsReport | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isReady) {
-      router.replace('/onboarding');
-    } else {
-      logEvent('report_viewed', { reportId: 'personal-insights' });
-    }
-  }, [isReady, router]);
+    let active = true;
 
-  if (!isReady) {
+    async function loadReport() {
+      try {
+        const history = await fetchChatHistory();
+        if (!active) {
+          return;
+        }
+
+        const content = history.report?.content
+          ? (history.report.content as PersonalInsightsReport)
+          : null;
+
+        if (!content) {
+          router.replace('/onboarding');
+          return;
+        }
+
+        setReport(content);
+        setIsLoading(false);
+        logEvent('report_viewed', { reportId: 'personal-insights' });
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        console.error('Failed to load personal insights report', error);
+        setError('Unable to load your report right now. Please try again later.');
+        setIsLoading(false);
+      }
+    }
+
+    loadReport();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  if (isLoading) {
     return (
       <div className="rounded-2xl border border-border bg-surface px-6 py-8 text-sm text-muted sm:rounded-3xl sm:p-10">
-        Redirecting to onboarding…
+        Loading your report…
       </div>
     );
   }
 
-  const report = buildPersonalInsightsReport(data);
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface px-6 py-8 text-center text-sm text-muted sm:rounded-3xl sm:p-10">
+        {error}
+      </div>
+    );
+  }
+
+  if (!report) {
+    return null;
+  }
 
   return (
     <article className="flex flex-col gap-8">
