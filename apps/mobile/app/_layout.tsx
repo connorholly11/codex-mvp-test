@@ -5,7 +5,10 @@ import { supabase } from '../lib/supabase';
 import { useSessionStore } from '../state/useSessionStore';
 
 const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {};
-const API_BASE_URL = env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const isDev = __DEV__;
+const API_BASE_URL = isDev
+  ? (env.EXPO_PUBLIC_API_BASE_URL_DEV ?? 'http://localhost:3000')
+  : (env.EXPO_PUBLIC_API_BASE_URL_PROD ?? 'https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app');
 
 function SessionProvider({ children }: { children: ReactNode }) {
   const setSession = useSessionStore((state) => state.setSession);
