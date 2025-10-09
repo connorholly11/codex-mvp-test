@@ -1,7 +1,8 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@purpose/api-client';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 
-export function createSupabaseClientForToken(token: string): SupabaseClient<Database> {
+export function createSupabaseClientForToken(token: string): SupabaseDatabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -19,5 +20,5 @@ export function createSupabaseClientForToken(token: string): SupabaseClient<Data
       persistSession: false,
       autoRefreshToken: false,
     },
-  });
+  }) as SupabaseDatabaseClient;
 }

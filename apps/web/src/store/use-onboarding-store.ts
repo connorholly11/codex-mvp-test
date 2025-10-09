@@ -7,9 +7,17 @@ import type {
   OnboardingStoreState,
 } from '@/features/onboarding/types';
 
+const DEFAULT_FULFILLMENT: OnboardingData['fulfillment'] = {
+  health: undefined,
+  work: undefined,
+  confidence: undefined,
+  relationships: undefined,
+  social: undefined,
+};
+
 const DEFAULT_DATA: OnboardingData = {
   demographics: {},
-  fulfillment: {},
+  fulfillment: DEFAULT_FULFILLMENT,
   personality: {},
   values: {
     firstRound: [],

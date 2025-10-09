@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { onboardingPayloadSchema } from '@purpose/api-client/onboarding';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 import { buildPersonalInsightsReport, generatePersonalInsights } from '@/lib/reports';
 import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
 
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = auth.client;
+  const supabase = auth.client as SupabaseDatabaseClient;
   const sessionUser = auth.user;
   const body = await request.json();
   const parsed = onboardingPayloadSchema.safeParse(body);

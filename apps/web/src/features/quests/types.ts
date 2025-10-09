@@ -1,3 +1,5 @@
+import type { Json } from '@purpose/api-client';
+
 export type QuestType = 'likert' | 'reflection' | 'choice';
 
 export type QuestDefinition = {
@@ -24,10 +26,10 @@ export type QuestDefinition = {
       };
 };
 
-export type QuestStatus = 'available' | 'completed';
+export type QuestStatus = 'available' | 'in_progress' | 'completed';
 
 export type QuestResponse = {
   questId: string;
   completedAt: string;
-  answer: string | number;
+  answer: Json | null;
 };

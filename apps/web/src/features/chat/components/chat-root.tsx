@@ -10,13 +10,12 @@ import {
   useState,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  fetchChatHistory,
-  streamChatMessage,
-  type ChatMessage,
-  type PersonalInsightsReport,
-} from '@purpose/api-client';
+import { fetchChatHistory, streamChatMessage, type ChatMessage } from '@purpose/api-client';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser-client';
+import {
+  parsePersonalInsightsReport,
+  type PersonalInsightsReport,
+} from '@/lib/reports';
 import { YouReportCard } from '@/features/chat/components/you-report-card';
 import { useChatStore } from '@/store/use-chat-store';
 import { useSessionStore } from '@/store/use-session-store';
@@ -55,7 +54,7 @@ export function ChatRoot() {
         setMessages(history.messages);
         setReport(
           history.report?.content
-            ? (history.report.content as PersonalInsightsReport)
+            ? parsePersonalInsightsReport(history.report.content)
             : null,
         );
 
@@ -194,10 +193,10 @@ export function ChatRoot() {
         try {
           const latest = await fetchChatHistory();
           setMessages(latest.messages);
-          setReport(
+          setReport((prev) =>
             latest.report?.content
-              ? (latest.report.content as PersonalInsightsReport)
-              : report,
+              ? parsePersonalInsightsReport(latest.report.content) ?? prev
+              : prev,
           );
           if (latest.profile?.legal_acceptance_at) {
             updateUser({ legalAcceptedAt: latest.profile.legal_acceptance_at });
@@ -206,7 +205,7 @@ export function ChatRoot() {
           console.warn('Failed to refresh chat history after streaming', error);
         }
       });
-  }, [appendMessage, input, isStreaming, report, setMessages, updateMessage, updateUser]);
+  }, [appendMessage, input, isStreaming, setMessages, updateMessage, updateUser]);
 
   const headerSubtitle = useMemo(() => {
     if (!user?.displayName) {

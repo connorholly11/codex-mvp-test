@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { QuestDefinition } from '@/features/quests/types';
+import type { QuestDefinition, QuestResponse } from '@/features/quests/types';
 
 type QuestModalProps = {
   quest: QuestDefinition | null;
   onClose: () => void;
-  onComplete: (answer: string | number) => void;
+  onComplete: (answer: QuestResponse['answer']) => void;
 };
 
 export function QuestModal({ quest, onClose, onComplete }: QuestModalProps) {

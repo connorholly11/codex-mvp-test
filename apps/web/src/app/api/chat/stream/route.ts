@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import type { MessageParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 import { z } from 'zod';
 import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
 import { getSystemPrompt } from '@/lib/ai/system-prompt';
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = auth.client;
+  const supabase = auth.client as SupabaseDatabaseClient;
   const user = auth.user;
   const payload = await request.json();
   const parsed = requestSchema.safeParse(payload);
@@ -101,11 +103,10 @@ export async function POST(request: NextRequest) {
   const anthropic = new Anthropic({ apiKey });
 
   const encoder = new TextEncoder();
-  const agentMessages =
-    historyQuery.data?.map((message) => ({
-      role: message.role === 'user' ? 'user' : 'assistant',
-      content: [{ type: 'text', text: message.content }],
-    })) ?? [];
+  const agentMessages: MessageParam[] = (historyQuery.data ?? []).map((message) => ({
+    role: message.role === 'user' ? 'user' : 'assistant',
+    content: [{ type: 'text', text: message.content } as TextBlockParam],
+  }));
 
   const userAckPayload = {
     userMessageId: userMessageInsert.data.id,

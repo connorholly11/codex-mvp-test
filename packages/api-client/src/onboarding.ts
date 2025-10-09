@@ -8,7 +8,7 @@ const fulfillmentShape = fulfillmentDomains.reduce(
     ...shape,
     [domain]: z.number().min(1).max(5).optional(),
   }),
-  {} as Record<(typeof fulfillmentDomains)[number], z.ZodNumber>,
+  {} as Record<(typeof fulfillmentDomains)[number], z.ZodOptional<z.ZodNumber>>,
 );
 
 export const onboardingDemographicsSchema = z.object({

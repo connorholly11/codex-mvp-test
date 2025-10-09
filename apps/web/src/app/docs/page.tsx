@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 export default async function DocsPage() {
-  const specPath = path.join(process.cwd(), 'docs', 'WEB_SPEC.md');
+  const specPath = path.resolve(process.cwd(), '..', '..', 'docs', 'WEB_SPEC.md');
   const spec = await fs.readFile(specPath, 'utf-8');
 
   return (

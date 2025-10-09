@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchChatHistory, type PersonalInsightsReport } from '@purpose/api-client';
+import { fetchChatHistory } from '@purpose/api-client';
 import { logEvent } from '@/lib/analytics';
+import {
+  parsePersonalInsightsReport,
+  type PersonalInsightsReport,
+} from '@/lib/reports';
 
 export function PersonalInsightsViewer() {
   const router = useRouter();
@@ -22,7 +26,7 @@ export function PersonalInsightsViewer() {
         }
 
         const content = history.report?.content
-          ? (history.report.content as PersonalInsightsReport)
+          ? parsePersonalInsightsReport(history.report.content)
           : null;
 
         if (!content) {

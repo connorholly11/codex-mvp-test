@@ -20,6 +20,55 @@ export type PersonalInsightsReport = {
   summary: PersonalInsightsSummary;
 };
 
+function isPersonalInsightsSection(value: unknown): value is PersonalInsightsSection {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const section = value as Partial<PersonalInsightsSection>;
+  return (
+    typeof section.id === 'string' &&
+    typeof section.title === 'string' &&
+    typeof section.content === 'string'
+  );
+}
+
+export function parsePersonalInsightsReport(content: unknown): PersonalInsightsReport | null {
+  if (!content || typeof content !== 'object') {
+    return null;
+  }
+
+  const value = content as Partial<PersonalInsightsReport>;
+
+  if (typeof value.openingInsight !== 'string') {
+    return null;
+  }
+
+  const sections = Array.isArray(value.sections)
+    ? (value.sections.filter(isPersonalInsightsSection) as PersonalInsightsSection[])
+    : [];
+
+  const summary = (value.summary ?? {}) as Partial<PersonalInsightsSummary>;
+
+  return {
+    title: typeof value.title === 'string' && value.title.length > 0 ? value.title : 'Your Personal Insights',
+    openingInsight: value.openingInsight,
+    sections,
+    summary: {
+      topValueLabel:
+        typeof summary.topValueLabel === 'string' ? summary.topValueLabel : summary.topValueLabel ?? null,
+      growthAreaLabel:
+        typeof summary.growthAreaLabel === 'string'
+          ? summary.growthAreaLabel
+          : summary.growthAreaLabel ?? null,
+      growthAreaScore:
+        typeof summary.growthAreaScore === 'number' ? summary.growthAreaScore : summary.growthAreaScore ?? null,
+      constraint:
+        typeof summary.constraint === 'string' ? summary.constraint : summary.constraint ?? null,
+    },
+  };
+}
+
 const VALUE_LABELS: Record<string, string> = {
   'own-time': 'Owning your time',
   'new-experiences': 'New experiences',

@@ -15,6 +15,7 @@ type QuestStoreState = {
   error: string | null;
   initialize: (accessToken?: string) => Promise<void>;
   completeQuest: (questId: string, answer: QuestResponse['answer'], accessToken?: string) => Promise<void>;
+  reset: () => void;
 };
 
 type QuestsResponsePayload = {
@@ -32,21 +33,24 @@ export const useQuestsStore = create<QuestStoreState>((set, get) => ({
       return;
     }
 
-    set({ isLoading: true, error: null });
+    set(() => ({ isLoading: true, error: null }) as Partial<QuestStoreState>);
     try {
       const response = await fetch('/api/quests', buildRequestInit(accessToken));
       if (!response.ok) {
         throw new Error('Failed to fetch quests');
       }
       const data = (await response.json()) as QuestsResponsePayload;
-      set({
+      set(() => ({
         statuses: { ...DEFAULT_STATUSES, ...data.statuses },
         responses: data.responses,
         isLoading: false,
-      });
+      }) as Partial<QuestStoreState>);
     } catch (error) {
       console.error('Failed to load quests', error);
-      set({ error: 'Unable to load quests right now.', isLoading: false });
+      set(() => ({
+        error: 'Unable to load quests right now.',
+        isLoading: false,
+      }) as Partial<QuestStoreState>);
     }
   },
   completeQuest: async (questId, answer, accessToken) => {
@@ -57,16 +61,23 @@ export const useQuestsStore = create<QuestStoreState>((set, get) => ({
     });
 
     if (!response.ok) {
-      const error = await safeParseJson(response);
-      throw new Error(error?.error ?? 'Failed to complete quest');
+      const errorPayload = (await safeParseJson(response)) as { error?: string } | null;
+      throw new Error(errorPayload?.error ?? 'Failed to complete quest');
     }
 
     const payload = (await response.json()) as QuestsResponsePayload;
-    set({
+    set(() => ({
       statuses: { ...DEFAULT_STATUSES, ...payload.statuses },
       responses: payload.responses,
-    });
+    }) as Partial<QuestStoreState>);
   },
+  reset: () =>
+    set(() => ({
+      statuses: structuredClone(DEFAULT_STATUSES),
+      responses: [],
+      isLoading: false,
+      error: null,
+    }) as Partial<QuestStoreState>),
 }));
 
 function buildRequestInit(accessToken?: string): RequestInit {

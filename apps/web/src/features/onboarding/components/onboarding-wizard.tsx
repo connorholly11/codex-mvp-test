@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import type {
   OnboardingStepId,
   OnboardingStepComponentProps,
@@ -32,7 +32,7 @@ const STEP_SEQUENCE: OnboardingStepId[] = [
   'complete',
 ];
 
-const STEP_COMPONENTS: Record<OnboardingStepId, (props: OnboardingStepComponentProps) => JSX.Element> = {
+const STEP_COMPONENTS: Record<OnboardingStepId, (props: OnboardingStepComponentProps) => ReactElement> = {
   intro: IntroStep,
   demographics: DemographicsStep,
   fulfillment: FulfillmentStep,

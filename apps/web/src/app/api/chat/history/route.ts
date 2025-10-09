@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
 
 export const runtime = 'nodejs';
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = auth.client;
+  const supabase = auth.client as SupabaseDatabaseClient;
   const user = auth.user;
   const chatSession = await supabase
     .from('chat_sessions')

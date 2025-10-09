@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from '@purpose/api-client';
 import { createServerSupabaseClient } from '@/lib/supabase/server-client';
 import { createSupabaseClientForToken } from '@/lib/supabase/token-client';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 
 export type AuthenticatedSupabase = {
-  client: SupabaseClient<Database>;
+  client: SupabaseDatabaseClient;
   user: User;
   accessToken?: string;
 };
@@ -20,7 +21,11 @@ export async function getAuthenticatedSupabase(
   } = await supabase.auth.getSession();
 
   if (session?.user) {
-    return { client: supabase, user: session.user, accessToken: session.access_token ?? undefined };
+    return {
+      client: supabase,
+      user: session.user,
+      accessToken: session.access_token ?? undefined,
+    };
   }
 
   const authHeader = request.headers.get('authorization');

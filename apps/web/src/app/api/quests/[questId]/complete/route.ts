@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { QUESTS } from '@/features/quests/data/quests';
 import type { QuestResponse, QuestStatus } from '@/features/quests/types';
+import type { Json } from '@purpose/api-client';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
 
+const jsonValueSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(jsonValueSchema)]),
+);
+
 const payloadSchema = z.object({
-  answer: z.union([z.string(), z.number()]),
+  answer: jsonValueSchema.nullable(),
 });
 
 export const runtime = 'nodejs';
@@ -32,7 +38,7 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const supabase = auth.client;
+  const supabase = auth.client as SupabaseDatabaseClient;
   const user = auth.user;
   const now = new Date().toISOString();
 

@@ -1,44 +1,42 @@
 import type { OnboardingData as SharedOnboardingData } from '@purpose/api-client/onboarding';
 
-export type GenderOption = "male" | "female" | "non-binary" | "prefer-not";
+export type GenderOption = 'male' | 'female' | 'non-binary' | 'prefer-not';
 
 export type FulfillmentDomain =
-  | "health"
-  | "work"
-  | "confidence"
-  | "relationships"
-  | "social";
+  | 'health'
+  | 'work'
+  | 'confidence'
+  | 'relationships'
+  | 'social';
 
 export type PersonalityQuestionId = `bfi-${number}`;
 
 export type ValueOption =
-  | "own-time"
-  | "new-experiences"
-  | "fun-pleasure"
-  | "achieve-success"
-  | "have-control"
-  | "feel-safe"
-  | "be-liked"
-  | "honor-tradition"
-  | "generosity"
-  | "equality-inclusion";
+  | 'own-time'
+  | 'new-experiences'
+  | 'fun-pleasure'
+  | 'achieve-success'
+  | 'have-control'
+  | 'feel-safe'
+  | 'be-liked'
+  | 'honor-tradition'
+  | 'generosity'
+  | 'equality-inclusion';
 
-export type ReflectionQuestionId = "desire" | "avoidance";
+export type ReflectionQuestionId = 'desire' | 'avoidance';
 
 export type OnboardingStepId =
-  | "intro"
-  | "demographics"
-  | "fulfillment"
-  | "constraint"
-  | "personality"
-  | "values"
-  | "reflections"
-  | "processing"
-  | "account"
-  | "legal"
-  | "complete";
-
-import type { OnboardingData as SharedOnboardingData } from '@purpose/api-client/onboarding';
+  | 'intro'
+  | 'demographics'
+  | 'fulfillment'
+  | 'constraint'
+  | 'personality'
+  | 'values'
+  | 'reflections'
+  | 'processing'
+  | 'account'
+  | 'legal'
+  | 'complete';
 
 export type OnboardingData = SharedOnboardingData;
 

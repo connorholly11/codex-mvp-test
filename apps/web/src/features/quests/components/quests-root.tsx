@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QUESTS } from '@/features/quests/data/quests';
 import { QuestModal } from '@/features/quests/components/quest-modal';
+import type { QuestResponse } from '@/features/quests/types';
 import { useQuestsStore } from '@/store/use-quests-store';
 import { useSessionStore } from '@/store/use-session-store';
 import { logEvent } from '@/lib/analytics';
@@ -42,10 +43,13 @@ export function QuestsRoot() {
     );
   }
 
-  const handleComplete = async (questId: string, answer: string | number) => {
+  const handleComplete = async (questId: string, answer: QuestResponse['answer']) => {
     try {
       await completeQuest(questId, answer);
-      logEvent('quest_completed', { questId, answer });
+      logEvent('quest_completed', {
+        questId,
+        answer: normaliseAnswerForAnalytics(answer),
+      });
       setActiveQuestId(null);
       setCelebratedQuestId(questId);
       window.setTimeout(() => setCelebratedQuestId(null), 4000);
@@ -139,12 +143,12 @@ export function QuestsRoot() {
                 if (!quest) {
                   return null;
                 }
+                const formattedAnswer = formatQuestAnswer(response.answer);
                 return (
                   <li key={response.questId} className="flex flex-col">
                     <span className="text-foreground">{quest.title}</span>
                     <span className="text-xs text-muted">
-                      {new Date(response.completedAt).toLocaleString()} –{' '}
-                      {typeof response.answer === 'number' ? `Rating: ${response.answer}` : response.answer}
+                      {new Date(response.completedAt).toLocaleString()} – {formattedAnswer}
                     </span>
                   </li>
                 );
@@ -164,4 +168,35 @@ export function QuestsRoot() {
       />
     </div>
   );
+}
+
+function normaliseAnswerForAnalytics(answer: QuestResponse['answer']) {
+  if (answer === null) {
+    return null;
+  }
+  if (typeof answer === 'string' || typeof answer === 'number' || typeof answer === 'boolean') {
+    return answer;
+  }
+  try {
+    return JSON.stringify(answer);
+  } catch {
+    return 'complex-response';
+  }
+}
+
+function formatQuestAnswer(answer: QuestResponse['answer']): string {
+  if (answer === null) {
+    return 'No answer recorded yet.';
+  }
+  if (typeof answer === 'string') {
+    return answer;
+  }
+  if (typeof answer === 'number' || typeof answer === 'boolean') {
+    return String(answer);
+  }
+  try {
+    return JSON.stringify(answer);
+  } catch {
+    return 'Response captured';
+  }
 }
