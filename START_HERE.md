@@ -10,6 +10,18 @@ pnpm dev:web        # http://localhost:3000
 pnpm dev:mobile     # starts Expo dev server
 ```
 
+## Supabase Setup
+1. Log in with the CLI (already installed here):
+   ```bash
+   supabase login          # opens browser
+   supabase link --project-ref <your-ref>
+   ```
+2. Apply schema migrations as you add them:
+   ```bash
+   supabase db push        # runs SQL in supabase/migrations locally
+   ```
+3. Copy your Supabase keys into `.env.local` (see docs for the exact variables). The repo already has `supabase/.temp` linked metadata.
+
 ## MVP Tech Stack (for launch)
 - **Web:** Next.js 15 (App Router) deployed on Vercel.
 - **Mobile:** Expo React Native (iOS first) via EAS.
