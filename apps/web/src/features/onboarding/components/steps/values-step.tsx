@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { OnboardingStepComponentProps, ValueOption } from '@/features/onboarding/types';
 
 const VALUE_OPTIONS: { value: ValueOption; label: string }[] = [
@@ -23,25 +24,64 @@ export function ValuesStep({
   onContinue,
   updateData,
 }: OnboardingStepComponentProps) {
-  const selections = data.values.finalRound ?? [];
+  const rawSelections = data.values.finalRound ?? [];
+  const [slotSelections, setSlotSelections] = useState<(ValueOption | undefined)[]>(() =>
+    POSITION_LABELS.map((_, index) => rawSelections[index]),
+  );
 
-  const handleChange = (position: number, nextValue: ValueOption) => {
+  useEffect(() => {
+    const next = POSITION_LABELS.map((_, index) => rawSelections[index]);
+    setSlotSelections((current) => {
+      const isSameLength = current.length === next.length;
+      const isSame =
+        isSameLength && next.every((value, index) => current[index] === value);
+      return isSame ? current : next;
+    });
+  }, [rawSelections]);
+
+  useEffect(() => {
+    const filtered = slotSelections.filter(
+      (value): value is ValueOption => Boolean(value),
+    );
+    const isSameLength = filtered.length === rawSelections.length;
+    const isSame =
+      isSameLength && filtered.every((value, index) => rawSelections[index] === value);
+    if (isSame) {
+      return;
+    }
+
     updateData((draft) => {
-      const current = draft.values.finalRound ?? [];
-      const updated = [...current];
-      updated[position] = nextValue;
-      draft.values.finalRound = updated;
-      // Mirror into the earlier rounds for this prototype scaffold.
-      draft.values.firstRound = Array.from(new Set(updated.filter(Boolean)));
+      draft.values.finalRound = filtered;
+      draft.values.firstRound = Array.from(new Set(filtered));
       draft.values.secondRound = draft.values.firstRound;
+    });
+  }, [rawSelections, slotSelections, updateData]);
+
+  const handleSelect = (position: number, value: ValueOption) => {
+    setSlotSelections((previous) => {
+      return previous.map((slot, index) => {
+        if (index === position) {
+          return value;
+        }
+        if (slot === value) {
+          return undefined;
+        }
+        return slot;
+      });
     });
   };
 
-  const isOptionDisabled = (value: ValueOption, position: number) => {
-    return selections.some((selected, index) => selected === value && index !== position);
+  const handleClear = (position: number) => {
+    setSlotSelections((previous) => {
+      const next = [...previous];
+      for (let index = position; index < next.length; index += 1) {
+        next[index] = undefined;
+      }
+      return next;
+    });
   };
 
-  const canContinue = selections.length === 3 && selections.every(Boolean);
+  const canContinue = slotSelections.every(Boolean);
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,7 +89,9 @@ export function ValuesStep({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
           Step 5 of 6
         </p>
-        <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">What matters most to you?</h2>
+        <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
+          What matters most to you?
+        </h2>
         <p className="text-sm text-muted">
           Choose the three values that feel most essential right now and order them from most
           to least important. We’ll use these to align future quests and coaching prompts.
@@ -57,29 +99,48 @@ export function ValuesStep({
       </header>
 
       <div className="flex flex-col gap-4">
-        {POSITION_LABELS.map((label, index) => (
-          <label key={label} className="flex flex-col gap-2 text-sm">
-            <span className="text-muted">{label}</span>
-            <select
-              value={selections[index] ?? ''}
-              onChange={(event) => handleChange(index, event.target.value as ValueOption)}
-              className="rounded-2xl border border-border bg-surface-muted px-4 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <option value="" disabled>
-                Select a value
-              </option>
-              {VALUE_OPTIONS.map((option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                  disabled={isOptionDisabled(option.value, index)}
+        {POSITION_LABELS.map((label, index) => {
+          const selectedValue = slotSelections[index];
+          const isPositionLocked = index > 0 && !slotSelections[index - 1];
+          return (
+            <div key={label} className="flex flex-col gap-2 text-sm">
+              <span className="text-muted">{label}</span>
+              <div className="flex flex-wrap gap-2">
+                {VALUE_OPTIONS.map((option) => {
+                  const isSelected = selectedValue === option.value;
+                  const isAlreadyChosen = slotSelections.some(
+                    (slot, slotIndex) => slot === option.value && slotIndex !== index,
+                  );
+                  const isDisabled = (!isSelected && isAlreadyChosen) || isPositionLocked;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleSelect(index, option.value)}
+                      aria-pressed={isSelected}
+                      disabled={isDisabled}
+                      className={`inline-flex min-w-[180px] flex-1 items-center justify-center rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                        isSelected
+                          ? 'border-transparent bg-accent text-accent-foreground'
+                          : 'border-border bg-surface-muted text-muted hover:bg-surface'
+                      } ${isDisabled ? 'opacity-50' : ''}`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => handleClear(index)}
+                  disabled={!slotSelections[index]}
+                  className="inline-flex min-w-[120px] items-center justify-center rounded-2xl border border-transparent bg-surface px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted transition hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
+                  Clear
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">

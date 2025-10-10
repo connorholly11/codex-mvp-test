@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev:web": "pnpm --filter web dev",
+    "dev:web": "NODE_OPTIONS=\"--require $INIT_CWD/scripts/load-env.cjs\" pnpm --filter web dev",
     "dev:mobile": "pnpm --filter mobile start",
     "lint": "pnpm lint:web",
     "lint:web": "pnpm --filter web lint",

@@ -33,6 +33,16 @@ const DOMAINS: { id: FulfillmentDomain; title: string; question: string }[] = [
   },
 ];
 
+const SCORES = [1, 2, 3, 4, 5] as const;
+
+const SCORE_SHORT_LABELS: Record<(typeof SCORES)[number], string> = {
+  1: 'Very unsatisfied',
+  2: 'Unsatisfied',
+  3: 'Neutral',
+  4: 'Satisfied',
+  5: 'Thriving',
+};
+
 export function FulfillmentStep({
   data,
   onBack,
@@ -59,14 +69,14 @@ export function FulfillmentStep({
         </p>
         <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">How fulfilled do you feel?</h2>
         <p className="text-sm text-muted">
-          Drag the sliders to reflect how satisfied you feel in each area today. 1 means
+          Tap the number that reflects how satisfied you feel in each area today. 1 means
           deeply unsatisfied, 5 means thriving.
         </p>
       </header>
 
       <div className="flex flex-col gap-6">
         {DOMAINS.map((domain) => {
-          const value = ratings[domain.id] ?? 3;
+          const selectedScore = ratings[domain.id];
           return (
             <div
               key={domain.id}
@@ -79,19 +89,34 @@ export function FulfillmentStep({
                 <p className="text-xs text-muted">{domain.question}</p>
               </div>
               <div className="flex flex-col gap-3">
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
-                  value={value}
-                  onChange={(event) => handleChange(domain.id, Number(event.target.value))}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted">
-                  <span>Very unsatisfied</span>
-                  <span className="text-sm font-semibold text-foreground">{value}</span>
-                  <span>Very satisfied</span>
+                <div className="flex flex-wrap gap-2">
+                  {SCORES.map((score) => {
+                    const isSelected = selectedScore === score;
+                    return (
+                      <button
+                        key={score}
+                        type="button"
+                        onClick={() => handleChange(domain.id, score)}
+                        aria-pressed={isSelected}
+                        className={`inline-flex flex-1 min-w-[96px] flex-col items-center justify-center gap-1 rounded-2xl border px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                          isSelected
+                            ? 'border-transparent bg-accent text-accent-foreground'
+                            : 'border-border bg-transparent text-muted hover:bg-surface'
+                        }`}
+                      >
+                        <span className="text-lg font-semibold">{score}</span>
+                        <span className="text-[11px] font-normal tracking-tight">
+                          {SCORE_SHORT_LABELS[score]}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
+                <p className="text-xs text-muted">
+                  {selectedScore
+                    ? `You chose ${SCORE_SHORT_LABELS[selectedScore]}.`
+                    : 'Select the number that matches how you feel today.'}
+                </p>
               </div>
             </div>
           );

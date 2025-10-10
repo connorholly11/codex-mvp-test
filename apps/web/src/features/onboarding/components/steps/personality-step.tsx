@@ -59,7 +59,7 @@ export function PersonalityStep({
 
       <div className="flex flex-col gap-5">
         {QUESTIONS.map((question) => {
-          const value = responses[question.id] ?? 3;
+          const selectedScore = responses[question.id];
           return (
             <div key={question.id} className="rounded-2xl border border-border bg-surface-muted p-5">
               <p className="mb-4 text-sm text-foreground">{question.prompt}</p>
@@ -67,7 +67,7 @@ export function PersonalityStep({
                 <div className="flex flex-wrap gap-2">
                   {SCALE_LABELS.map((label, index) => {
                     const score = index + 1;
-                    const isSelected = value === score;
+                    const isSelected = selectedScore === score;
                     return (
                       <button
                         key={label}

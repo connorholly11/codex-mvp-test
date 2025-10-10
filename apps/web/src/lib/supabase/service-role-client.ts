@@ -1,15 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@purpose/api-client';
+import { getSupabasePublicEnv, getSupabaseServiceRoleKey } from '@/lib/supabase/env';
 
 export function createServiceRoleSupabaseClient(): SupabaseClient<Database> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { url } = getSupabasePublicEnv();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Supabase service role environment variables are not configured');
-  }
-
-  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(url, serviceRoleKey, {
     auth: {
       persistSession: false,
     },

@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js';
 import type { Database } from '@purpose/api-client';
 import { createServerSupabaseClient } from '@/lib/supabase/server-client';
 import { createSupabaseClientForToken } from '@/lib/supabase/token-client';
+import { getSupabasePublicEnv } from '@/lib/supabase/env';
 import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 
 export type AuthenticatedSupabase = {
@@ -15,7 +16,7 @@ export type AuthenticatedSupabase = {
 export async function getAuthenticatedSupabase(
   request: NextRequest,
 ): Promise<AuthenticatedSupabase | null> {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -35,14 +36,9 @@ export async function getAuthenticatedSupabase(
       return null;
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { url, anonKey } = getSupabasePublicEnv();
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase environment variables are not configured');
-    }
-
-    const verifier = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    const verifier = createClient<Database>(url, anonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
