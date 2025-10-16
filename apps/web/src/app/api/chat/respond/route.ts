@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import type { Message, MessageParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages';
+import type { Message, MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
 import { z } from 'zod';
 import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
-import { getSystemPrompt } from '@/lib/ai/system-prompt';
+import {
+  buildSystemPrompt,
+  ensureChatSession,
+  fetchChatHistory,
+  fetchPersonalInsightsSummary,
+  insertUserMessage,
+  toAnthropicMessages,
+} from '../utils';
 
 const requestSchema = z.object({
   message: z.string().min(1).max(4000),
@@ -31,65 +38,29 @@ export async function POST(request: NextRequest) {
   const userMessage = parsed.data.message.trim();
   const userId = user.id;
 
-  const chatSessionQuery = await supabase
-    .from('chat_sessions')
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  let chatSessionId = chatSessionQuery.data?.id ?? null;
-
-  if (!chatSessionId) {
-    const inserted = await supabase
-      .from('chat_sessions')
-      .insert({ user_id: userId, title: 'Main conversation' })
-      .select('id')
-      .single();
-
-    if (inserted.error) {
-      console.error('Failed to create chat session', inserted.error);
-      return NextResponse.json({ error: 'Failed to create chat session' }, { status: 500 });
-    }
-
-    chatSessionId = inserted.data.id;
+  const sessionResult = await ensureChatSession(supabase, userId);
+  if (!sessionResult.ok) {
+    console.error('Failed to create chat session', sessionResult.error);
+    return NextResponse.json({ error: 'Failed to create chat session' }, { status: 500 });
   }
 
-  const userMessageInsert = await supabase
-    .from('chat_messages')
-    .insert({
-      user_id: userId,
-      session_id: chatSessionId,
-      role: 'user',
-      content: userMessage,
-    })
-    .select('id, created_at')
-    .single();
+  const chatSessionId = sessionResult.data;
 
-  if (userMessageInsert.error) {
-    console.error('Failed to persist user message', userMessageInsert.error);
+  const userMessageResult = await insertUserMessage(supabase, userId, chatSessionId, userMessage);
+  if (!userMessageResult.ok) {
+    console.error('Failed to persist user message', userMessageResult.error);
     return NextResponse.json({ error: 'Failed to store message' }, { status: 500 });
   }
 
-  const reportQuery = await supabase
-    .from('reports')
-    .select('content')
-    .eq('user_id', userId)
-    .eq('report_type', 'personal-insights')
-    .maybeSingle();
+  const insightsResult = await fetchPersonalInsightsSummary(supabase, userId);
+  if (!insightsResult.ok) {
+    console.error('Failed to fetch personal insights summary', insightsResult.error);
+    return NextResponse.json({ error: 'Failed to load context' }, { status: 500 });
+  }
 
-  const insightsSummary = buildInsightsSummary(reportQuery.data?.content);
-
-  const historyQuery = await supabase
-    .from('chat_messages')
-    .select('role, content')
-    .eq('session_id', chatSessionId)
-    .order('created_at', { ascending: true })
-    .limit(20);
-
-  if (historyQuery.error) {
-    console.error('Failed to fetch chat history for context', historyQuery.error);
+  const historyResult = await fetchChatHistory(supabase, chatSessionId);
+  if (!historyResult.ok) {
+    console.error('Failed to fetch chat history for context', historyResult.error);
     return NextResponse.json({ error: 'Failed to load context' }, { status: 500 });
   }
 
@@ -101,11 +72,8 @@ export async function POST(request: NextRequest) {
   }
 
   const anthropic = new Anthropic({ apiKey });
-  const systemPrompt = buildSystemPrompt(insightsSummary);
-  const agentMessages: MessageParam[] = (historyQuery.data ?? []).map((message) => ({
-    role: message.role === 'user' ? 'user' : 'assistant',
-    content: [{ type: 'text', text: message.content } as TextBlockParam],
-  }));
+  const systemPrompt = buildSystemPrompt(insightsResult.data);
+  const agentMessages: MessageParam[] = toAnthropicMessages(historyResult.data);
 
   let assistantMessage = '';
 
@@ -154,8 +122,8 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     userMessage: {
-      id: userMessageInsert.data.id,
-      createdAt: userMessageInsert.data.created_at,
+      id: userMessageResult.data.id,
+      createdAt: userMessageResult.data.createdAt,
     },
     assistantMessage: {
       id: assistantInsert.data.id,
@@ -165,12 +133,6 @@ export async function POST(request: NextRequest) {
     },
   });
 }
-
-type ReportContent = {
-  openingInsight: string;
-  sections: { title: string; content: string }[];
-};
-
 function extractTextFromCompletion(completion: Message): string {
   for (const block of completion.content ?? []) {
     if (block.type === 'text' && typeof block.text === 'string') {
@@ -178,26 +140,4 @@ function extractTextFromCompletion(completion: Message): string {
     }
   }
   return '';
-}
-
-function buildInsightsSummary(content: unknown): string {
-  if (!content || typeof content !== 'object') {
-    return '';
-  }
-
-  const report = content as ReportContent;
-  const sectionSummaries = report.sections
-    .map((section) => `${section.title}: ${section.content}`)
-    .join('\n');
-
-  return `Opening insight: ${report.openingInsight}\n${sectionSummaries}`;
-}
-
-function buildSystemPrompt(insights: string): string {
-  const basePrompt = getSystemPrompt();
-  const insightsBlock = insights
-    ? `Here are personal insights about the user to guide your coaching:\n${insights}`
-    : 'The user has not completed their personal insights report yet.';
-
-  return `${basePrompt}\n\n${insightsBlock}`;
 }

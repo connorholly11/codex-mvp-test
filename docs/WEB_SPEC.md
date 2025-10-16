@@ -4,6 +4,8 @@ Version: 1.0 (Web)
 Last Updated: October 8, 2025
 Document Purpose: Adapt the Purpose AI life coach product for a modern responsive web experience, prioritising desktop and mobile web browsers while deferring native iOS/Android specific work.
 
+> **Note:** Purpose is now executing mobile-first. Treat this spec as a reference for companion web work; confirm priority before starting large web initiatives.
+
 ---
 
 ## 1. Executive Overview

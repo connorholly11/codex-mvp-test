@@ -33,6 +33,9 @@ Lint/format rules live alongside each app (see `apps/web/eslint.config.mjs` and 
 
 Shared packages should be authored in TypeScript with exports from `src/index.ts`. Consumers import via the `@purpose/*` namespace.
 
+- `@purpose/api-client` already backs both platforms (Supabase typings, onboarding schemas, chat helpers). Update this package first when adjusting shared flows.
+- `@purpose/ui` and `@purpose/analytics` are reserved placeholders. Leave them empty or add throwy exports until we land reusable components/telemetry.
+
 ## Adding Shared Code
 
 1. Place reusable modules in `packages/api-client`, `packages/ui`, or `packages/analytics`.

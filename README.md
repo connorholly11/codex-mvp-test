@@ -2,6 +2,8 @@
 
 This repository now houses the Purpose web experience (Next.js) and the in-progress Expo/React Native iOS client, along with shared packages.
 
+> **Focus:** We are mobile-first. Web work should be explicitly requested or tagged before you dive in.
+
 ## Structure
 
 ```
@@ -9,9 +11,9 @@ apps/
   web/        # Next.js web app (current prototype)
   mobile/     # Expo React Native app (base chat scaffold)
 packages/
-  api-client/ # Placeholder for shared Supabase/Anthropic helpers
-  analytics/  # Placeholder for shared analytics helpers
-  ui/         # Placeholder for shared design tokens/components
+  api-client/ # Shared Supabase/Anthropic client consumed by web + mobile
+  analytics/  # Stub package reserved for future cross-platform analytics
+  ui/         # Stub package reserved for future design tokens/components
 ```
 
 ## Getting Started
@@ -22,13 +24,6 @@ Install dependencies (from repo root):
 pnpm install
 ```
 
-### Web
-
-```bash
-pnpm dev:web        # runs Next.js dev server inside apps/web
-pnpm lint:web       # lint the web app
-```
-
 ### Mobile (Expo)
 
 ```bash
@@ -36,16 +31,24 @@ pnpm dev:mobile     # starts Expo in development mode
 pnpm --filter mobile ios   # optional alias to open iOS simulator
 ```
 
-> The mobile app currently contains a minimal chat screen to validate Expo tooling. Supabase/Anthropic integration and shared packages will plug in here as they are built out.
+> The Expo app is the product’s primary surface. Prioritize bringing feature parity with web using the shared packages before extending the web experience.
+
+### Web
+
+```bash
+pnpm dev:web        # runs Next.js dev server inside apps/web
+pnpm lint:web       # lint the web app
+```
 
 ## Shared Packages
 
-- `@purpose/api-client`, `@purpose/ui`, `@purpose/analytics` are placeholders for cross-platform logic. As the backend is wired up, move shared Supabase APIs, design tokens, and analytics helpers into these packages so both apps stay in sync.
+- `@purpose/api-client` contains the shared onboarding schemas, chat helpers, and Supabase typings that power both Next.js and Expo clients today.
+- `@purpose/ui` and `@purpose/analytics` are intentionally empty until we have reusable components/telemetry; keep them stubbed so imports fail fast while we shape those packages.
 
 ## Next Steps
 
-1. Fill the shared packages with real implementations (Supabase clients, tokens, analytics).
-2. Wire the Expo app to the same Supabase/Anthropic endpoints as the web app.
-3. Add platform-specific polish (haptics, voice input/output, push notifications) to the mobile client.
+1. Follow `docs/MOBILE_PARITY_PLAN.md` to close the gap between the Expo app and the current web experience (onboarding, quests, reports, streaming chat).
+2. Fill the shared packages with reusable implementations (`@purpose/api-client`, `@purpose/ui`, `@purpose/analytics`) so both platforms stay in lockstep.
+3. Layer mobile-specific polish (RevenueCat subscriptions, push notifications, voice) once parity milestones are met.
 
-Refer to `docs/IMPLEMENTING_SUPABASE_ANTHROPIC.md` for the Supabase/Anthropic rollout plan.
+Refer to `docs/IMPLEMENTING_SUPABASE_ANTHROPIC.md` for backend context and `docs/MOBILE_PARITY_PLAN.md` for mobile delivery details.

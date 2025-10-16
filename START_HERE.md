@@ -3,6 +3,8 @@
 ## One-Sentence Status
 Web onboarding and chat now persist to Supabase and stream replies from Anthropic; mobile app uses shared API client with automatic dev/prod URL switching; deployed to Vercel production.
 
+> **Focus:** Mobile-first. Treat Expo as the flagship surface; coordinate before making major web-only changes.
+
 ## Deployments
 - **Web (Next.js → Vercel):** https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
 - **Mobile (Expo iOS sandbox):** Run locally with Expo Go; iOS is the only supported target for now (Android build is TBD).
@@ -25,7 +27,7 @@ SUPABASE_DB_PASSWORD=<YOUR_SUPABASE_DATABASE_PASSWORD>
 ANTHROPIC_API_KEY=<YOUR_ANTHROPIC_API_KEY>
 CHAT_SYSTEM_PROMPT="You are an AI coach. Speak with compassionate candor..."    # optional override
 
-# Expo (mobile) - automatically switches between dev/prod
+# Expo (mobile) - primary surface; automatically switches between dev/prod
 EXPO_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_URL>
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
 EXPO_PUBLIC_API_BASE_URL_DEV=http://localhost:3000
@@ -92,7 +94,7 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - **Deferred:** Stripe/RevenueCat paywalls, PostHog analytics, dedicated Chat Gateway (enable when sustained streaming concurrency > ~600)
 
 ## Where to Build Next
-1. **Mobile parity follow-ups** – the Expo app now signs in and chats against Supabase/Anthropic. Next steps are polishing UX (deep linking, push, offline) and wiring additional surfaces (quests, journey) when needed.
+1. **Mobile parity follow-ups** – anchor on `docs/MOBILE_PARITY_PLAN.md` to close onboarding, quests, reports, and streaming gaps in the Expo app before adding new surfaces.
 2. **Quests & Journey** – both views hydrate from Supabase today; expand analytics and timeline visuals as new data arrives.
 3. **Reports UI** – personal insights viewer loads from Supabase; extend to weekly/monthly reports when those backends ship.
 4. **Testing** – add Vitest/Playwright coverage for `/api/onboarding`, `/api/chat/*`, and the new quests endpoints (mock Anthropic+Supabase where possible).
