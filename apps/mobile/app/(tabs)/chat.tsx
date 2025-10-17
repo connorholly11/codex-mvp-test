@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { logEvent } from "@purpose/analytics";
+import {
+  fetchChatHistory,
+  parsePersonalInsightsReport,
+  streamChatMessage,
+  type ChatMessage,
+  type PersonalInsightsReport,
+} from "@purpose/api-client";
+import { useNavigation } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,20 +18,19 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { animateLayout } from "../../lib/animation";
 import {
-  fetchChatHistory,
-  parsePersonalInsightsReport,
-  streamChatMessage,
-  type ChatMessage,
-  type PersonalInsightsReport,
-} from '@purpose/api-client';
-import { logEvent } from '@purpose/analytics';
-import { palette } from '../../theme';
-import { supabase } from '../../lib/supabase';
-import { useSessionStore } from '../../state/useSessionStore';
+  hapticImpactLight,
+  hapticImpactMedium,
+  hapticNotificationError,
+  hapticNotificationSuccess,
+} from "../../lib/haptics";
+import { supabase } from "../../lib/supabase";
+import { useSessionStore } from "../../state/useSessionStore";
+import { palette } from "../../theme";
 
 type UiMessage = ChatMessage & { pending?: boolean };
 
@@ -35,22 +43,31 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [report, setReport] = useState<PersonalInsightsReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
   const streamAbortController = useRef<AbortController | null>(null);
+  const hasHydrated = useRef(false);
+
+  const handleSignOut = () => {
+    hapticImpactLight();
+    supabase.auth.signOut().catch((error) => {
+      console.error("Failed to sign out", error);
+      hapticNotificationError();
+    });
+  };
 
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={() => supabase.auth.signOut()} style={styles.signOutButton}>
+        <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
           <Text style={styles.signOutLabel}>Sign out</Text>
         </TouchableOpacity>
       ),
-      title: 'Chat with Fermi',
+      title: "Chat with Fermi",
     });
-  }, [navigation]);
+  }, [handleSignOut, navigation]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -67,22 +84,33 @@ export default function ChatScreen() {
           return;
         }
 
+        animateLayout();
         setMessages(history.messages.map((message) => ({ ...message })));
+        if (!hasHydrated.current && history.messages.length > 0) {
+          hasHydrated.current = true;
+          hapticImpactLight();
+        }
 
-        const parsedReport = history.report?.content ? parsePersonalInsightsReport(history.report.content) : null;
+        const parsedReport = history.report?.content
+          ? parsePersonalInsightsReport(history.report.content)
+          : null;
         setReport(parsedReport);
 
         setProfile({
           displayName: history.profile?.display_name ?? null,
           legalAcceptedAt: history.profile?.legal_acceptance_at ?? null,
-          onboardingCompletedAt: history.profile?.onboarding_completed_at ?? null,
+          onboardingCompletedAt:
+            history.profile?.onboarding_completed_at ?? null,
         });
       })
       .catch((err) => {
         if (!active) {
           return;
         }
-        setError(err instanceof Error ? err.message : 'Failed to load chat history.');
+        hapticNotificationError();
+        setError(
+          err instanceof Error ? err.message : "Failed to load chat history.",
+        );
       })
       .finally(() => {
         if (active) {
@@ -103,7 +131,7 @@ export default function ChatScreen() {
 
   const headerSubtitle = useMemo(() => {
     if (!displayName) {
-      return 'Prototype mobile chat';
+      return "Prototype mobile chat";
     }
     return `Chatting as ${displayName}`;
   }, [displayName]);
@@ -114,10 +142,11 @@ export default function ChatScreen() {
       return;
     }
 
-    setInput('');
+    hapticImpactMedium();
+    setInput("");
     setIsSending(true);
     setError(null);
-    logEvent('chat_message_sent', { length: trimmed.length });
+    logEvent("chat_message_sent", { length: trimmed.length });
 
     streamAbortController.current?.abort();
     const controller = new AbortController();
@@ -127,30 +156,32 @@ export default function ChatScreen() {
     const tempAssistantId = `temp-assistant-${Date.now()}`;
     const now = new Date().toISOString();
 
+    animateLayout();
     setMessages((prev) => [
       ...prev,
       {
         id: tempUserId,
-        role: 'user',
+        role: "user",
         content: trimmed,
         createdAt: now,
       },
       {
         id: tempAssistantId,
-        role: 'assistant',
-        content: '',
+        role: "assistant",
+        content: "",
         createdAt: now,
         pending: true,
       },
     ]);
 
-    let accumulatedContent = '';
+    let accumulatedContent = "";
 
     try {
       await streamChatMessage(
         trimmed,
         {
           onAck: ({ userMessageId, createdAt }) => {
+            animateLayout();
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === tempUserId
@@ -165,6 +196,7 @@ export default function ChatScreen() {
           },
           onToken: (token) => {
             accumulatedContent += token;
+            animateLayout();
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === tempAssistantId
@@ -177,6 +209,8 @@ export default function ChatScreen() {
             );
           },
           onFinal: ({ assistantMessageId, createdAt, metadata }) => {
+            animateLayout();
+            hapticNotificationSuccess();
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === tempAssistantId
@@ -186,12 +220,15 @@ export default function ChatScreen() {
                       createdAt: createdAt ?? message.createdAt,
                       metadata: metadata ?? undefined,
                       pending: false,
-                      content: accumulatedContent.length > 0 ? accumulatedContent.trim() : message.content,
+                      content:
+                        accumulatedContent.length > 0
+                          ? accumulatedContent.trim()
+                          : message.content,
                     }
                   : message,
               ),
             );
-            logEvent('chat_message_completed', {
+            logEvent("chat_message_completed", {
               assistantMessageId,
               tokens: accumulatedContent.length,
             });
@@ -201,11 +238,18 @@ export default function ChatScreen() {
             streamAbortController.current = null;
           },
           onError: (streamError) => {
-            console.error('Streaming error', streamError);
-            setError(streamError instanceof Error ? streamError.message : 'Chat stream interrupted.');
-            logEvent('chat_message_error', {
-              message: streamError instanceof Error ? streamError.message : 'unknown',
+            console.error("Streaming error", streamError);
+            setError(
+              streamError instanceof Error
+                ? streamError.message
+                : "Chat stream interrupted.",
+            );
+            logEvent("chat_message_error", {
+              message:
+                streamError instanceof Error ? streamError.message : "unknown",
             });
+            hapticNotificationError();
+            animateLayout();
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === tempAssistantId
@@ -215,7 +259,7 @@ export default function ChatScreen() {
                       content:
                         accumulatedContent.length > 0
                           ? accumulatedContent
-                          : 'I hit a snag replying. Try again in a moment.',
+                          : "I hit a snag replying. Try again in a moment.",
                     }
                   : message,
               ),
@@ -225,11 +269,13 @@ export default function ChatScreen() {
         { accessToken, signal: controller.signal },
       );
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
+      if ((err as Error).name === "AbortError") {
         return;
       }
-      console.error('Failed to stream chat message', err);
-      setError(err instanceof Error ? err.message : 'Unable to send message.');
+      console.error("Failed to stream chat message", err);
+      hapticNotificationError();
+      setError(err instanceof Error ? err.message : "Unable to send message.");
+      animateLayout();
       setMessages((prev) =>
         prev.map((message) =>
           message.id === tempAssistantId
@@ -239,7 +285,7 @@ export default function ChatScreen() {
                 content:
                   accumulatedContent.length > 0
                     ? accumulatedContent
-                    : 'I had trouble responding. Please try again.',
+                    : "I had trouble responding. Please try again.",
               }
             : message,
         ),
@@ -252,7 +298,7 @@ export default function ChatScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={96}
       >
         <View style={styles.chatHeader}>
@@ -284,12 +330,17 @@ export default function ChatScreen() {
             editable={!isSending && !isLoading}
           />
           <TouchableOpacity
-            style={[styles.sendButton, (isSending || !input.trim()) && styles.sendButtonDisabled]}
+            style={[
+              styles.sendButton,
+              (isSending || !input.trim()) && styles.sendButtonDisabled,
+            ]}
             onPress={handleSend}
             activeOpacity={0.8}
             disabled={isSending || !input.trim()}
           >
-            <Text style={styles.sendLabel}>{isSending ? 'Sending...' : 'Send'}</Text>
+            <Text style={styles.sendLabel}>
+              {isSending ? "Sending..." : "Send"}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -298,9 +349,11 @@ export default function ChatScreen() {
 }
 
 function ChatBubble({ message }: { message: UiMessage }) {
-  const isUser = message.role === 'user';
+  const isUser = message.role === "user";
   return (
-    <View style={[styles.messageRow, isUser ? styles.alignEnd : styles.alignStart]}>
+    <View
+      style={[styles.messageRow, isUser ? styles.alignEnd : styles.alignStart]}
+    >
       <View
         style={[
           styles.bubble,
@@ -308,7 +361,9 @@ function ChatBubble({ message }: { message: UiMessage }) {
           message.pending && styles.pendingBubble,
         ]}
       >
-        <Text style={[styles.messageText, isUser && styles.userText]}>{message.content.trim() || '...'}</Text>
+        <Text style={[styles.messageText, isUser && styles.userText]}>
+          {message.content.trim() || "..."}
+        </Text>
       </View>
     </View>
   );
@@ -322,9 +377,17 @@ function ReportCard({ report }: { report: PersonalInsightsReport }) {
   return (
     <View style={styles.reportCard}>
       <Text style={styles.reportTitle}>Personal Insights</Text>
-      {topValue ? <Text style={styles.reportItem}>• North star value: {topValue}</Text> : null}
-      {growthArea ? <Text style={styles.reportItem}>• Growth edge: {growthArea}</Text> : null}
-      {constraint ? <Text style={styles.reportItem}>• Primary constraint: {constraint}</Text> : null}
+      {topValue ? (
+        <Text style={styles.reportItem}>• North star value: {topValue}</Text>
+      ) : null}
+      {growthArea ? (
+        <Text style={styles.reportItem}>• Growth edge: {growthArea}</Text>
+      ) : null}
+      {constraint ? (
+        <Text style={styles.reportItem}>
+          • Primary constraint: {constraint}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -347,7 +410,7 @@ const styles = StyleSheet.create({
   chatTitle: {
     color: palette.textPrimary,
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   chatSubtitle: {
     color: palette.textMuted,
@@ -358,16 +421,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   messageRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   alignEnd: {
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   alignStart: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   bubble: {
-    maxWidth: '80%',
+    maxWidth: "80%",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -387,7 +450,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   userText: {
-    fontWeight: '600',
+    fontWeight: "600",
     color: palette.textInverted,
   },
   composer: {
@@ -404,7 +467,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   sendButton: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     backgroundColor: palette.accent,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -415,16 +478,16 @@ const styles = StyleSheet.create({
   },
   sendLabel: {
     color: palette.textInverted,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   chatError: {
     color: palette.error,
-    textAlign: 'center',
+    textAlign: "center",
   },
   reportCard: {
     borderRadius: 20,
@@ -436,7 +499,7 @@ const styles = StyleSheet.create({
   },
   reportTitle: {
     color: palette.textPrimary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   reportItem: {
     color: palette.textMuted,
@@ -453,6 +516,6 @@ const styles = StyleSheet.create({
   signOutLabel: {
     color: palette.textMuted,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

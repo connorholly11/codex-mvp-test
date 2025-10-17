@@ -1,23 +1,34 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Redirect } from 'expo-router';
-import { palette } from '../theme';
-import { useSessionStore } from '../state/useSessionStore';
-import { useSubscriptionStore } from '../state/useSubscriptionStore';
+import { Redirect } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+
+import { hapticNotificationError } from "../lib/haptics";
+import { useSessionStore } from "../state/useSessionStore";
+import { useSubscriptionStore } from "../state/useSubscriptionStore";
+import { palette } from "../theme";
 
 export default function EntryPoint() {
   const status = useSessionStore((state) => state.status);
-  const onboardingCompletedAt = useSessionStore((state) => state.onboardingCompletedAt);
-  const initializeSubscriptions = useSubscriptionStore((state) => state.initialize);
+  const onboardingCompletedAt = useSessionStore(
+    (state) => state.onboardingCompletedAt,
+  );
+  const initializeSubscriptions = useSubscriptionStore(
+    (state) => state.initialize,
+  );
   const subscriptionStatus = useSubscriptionStore((state) => state.status);
   const hasAccess = useSubscriptionStore((state) => state.hasAccess);
-  const isSubscriptionLoading = useSubscriptionStore((state) => state.isLoading);
+  const isSubscriptionLoading = useSubscriptionStore(
+    (state) => state.isLoading,
+  );
 
   useEffect(() => {
-    void initializeSubscriptions();
+    initializeSubscriptions().catch((error) => {
+      console.error("Failed to initialize subscription state", error);
+      hapticNotificationError();
+    });
   }, [initializeSubscriptions]);
 
-  if (status === 'loading' || isSubscriptionLoading) {
+  if (status === "loading" || isSubscriptionLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={palette.accent} size="large" />
@@ -25,7 +36,7 @@ export default function EntryPoint() {
     );
   }
 
-  if (status === 'unauthenticated') {
+  if (status === "unauthenticated") {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
@@ -33,7 +44,7 @@ export default function EntryPoint() {
     return <Redirect href="/onboarding" />;
   }
 
-  if (!hasAccess && subscriptionStatus !== 'unknown') {
+  if (!hasAccess && subscriptionStatus !== "unknown") {
     return <Redirect href="/paywall" />;
   }
 
@@ -43,8 +54,8 @@ export default function EntryPoint() {
 const styles = StyleSheet.create({
   centered: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: palette.primaryBackground,
   },
 });

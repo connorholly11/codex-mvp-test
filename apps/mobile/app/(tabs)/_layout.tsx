@@ -1,6 +1,7 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { palette } from '../../theme';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+
+import { palette } from "../../theme";
 
 export default function TabsLayout() {
   return (
@@ -8,7 +9,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: palette.primaryBackground },
         headerTintColor: palette.textPrimary,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontWeight: "600" },
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textMuted,
         tabBarStyle: {
@@ -20,29 +21,37 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Chat',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-ellipses" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons color={color} name="chatbubble-ellipses" size={size} />
+          ),
+          title: "Chat",
         }}
       />
       <Tabs.Screen
         name="quests"
         options={{
-          title: 'Quests',
-          tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-circle" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons color={color} name="checkmark-circle" size={size} />
+          ),
+          title: "Quests",
         }}
       />
       <Tabs.Screen
         name="journey"
         options={{
-          title: 'Journey',
-          tabBarIcon: ({ color, size }) => <Ionicons name="trending-up" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons color={color} name="trending-up" size={size} />
+          ),
+          title: "Journey",
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
-          title: 'Reports',
-          tabBarIcon: ({ color, size }) => <Ionicons name="document-text" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons color={color} name="document-text" size={size} />
+          ),
+          title: "Reports",
         }}
       />
     </Tabs>

@@ -1,4 +1,12 @@
-import { useEffect, useState } from 'react';
+import { logEvent } from "@purpose/analytics";
+import {
+  QUESTS,
+  type QuestDefinition,
+  type QuestResponse,
+  type QuestStatus,
+} from "@purpose/api-client";
+import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,19 +16,20 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack } from 'expo-router';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { animateLayout } from "../../lib/animation";
 import {
-  QUESTS,
-  type QuestDefinition,
-  type QuestResponse,
-  type QuestStatus,
-} from '@purpose/api-client';
-import { logEvent } from '@purpose/analytics';
-import { palette } from '../../theme';
-import { useSessionStore } from '../../state/useSessionStore';
-import { useQuestsStore } from '../../state/useQuestsStore';
+  hapticImpactLight,
+  hapticImpactMedium,
+  hapticNotificationError,
+  hapticNotificationSuccess,
+  hapticSelection,
+} from "../../lib/haptics";
+import { useQuestsStore } from "../../state/useQuestsStore";
+import { useSessionStore } from "../../state/useSessionStore";
+import { palette } from "../../theme";
 
 export default function QuestsScreen() {
   const accessToken = useSessionStore((state) => state.accessToken);
@@ -32,30 +41,44 @@ export default function QuestsScreen() {
   const error = useQuestsStore((state) => state.error);
 
   useEffect(() => {
-    logEvent('quests_viewed');
+    logEvent("quests_viewed");
   }, []);
 
   useEffect(() => {
     if (!accessToken) {
       return;
     }
-    void initialize(accessToken);
+    initialize(accessToken).catch((initializeError) => {
+      console.error("Failed to load quests", initializeError);
+      hapticNotificationError();
+    });
   }, [accessToken, initialize]);
 
-  const handleComplete = async (questId: string, answer: QuestResponse['answer']) => {
+  const handleComplete = async (
+    questId: string,
+    answer: QuestResponse["answer"],
+  ) => {
     try {
+      hapticImpactMedium();
       await completeQuest(questId, answer, accessToken ?? undefined);
-      logEvent('quest_completed', { questId });
-      Alert.alert('Quest saved', 'Your response was recorded.');
+      logEvent("quest_completed", { questId });
+      hapticNotificationSuccess();
+      Alert.alert("Quest saved", "Your response was recorded.");
     } catch (questError) {
-      console.error('Failed to complete quest', questError);
-      Alert.alert('Unable to complete quest', questError instanceof Error ? questError.message : 'Please try again later.');
+      console.error("Failed to complete quest", questError);
+      hapticNotificationError();
+      Alert.alert(
+        "Unable to complete quest",
+        questError instanceof Error
+          ? questError.message
+          : "Please try again later.",
+      );
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen options={{ title: 'Daily quests' }} />
+      <Stack.Screen options={{ title: "Daily quests" }} />
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={palette.accent} />
@@ -70,8 +93,10 @@ export default function QuestsScreen() {
             <QuestCard
               key={quest.id}
               quest={quest}
-              status={statuses[quest.id] ?? 'available'}
-              response={responses.find((item) => item.questId === quest.id) ?? null}
+              status={statuses[quest.id] ?? "available"}
+              response={
+                responses.find((item) => item.questId === quest.id) ?? null
+              }
               onComplete={handleComplete}
             />
           ))}
@@ -85,25 +110,34 @@ type QuestCardProps = {
   quest: QuestDefinition;
   status: QuestStatus;
   response: QuestResponse | null;
-  onComplete: (questId: string, answer: QuestResponse['answer']) => Promise<void>;
+  onComplete: (
+    questId: string,
+    answer: QuestResponse["answer"],
+  ) => Promise<void>;
 };
 
 function QuestCard({ quest, status, response, onComplete }: QuestCardProps) {
   const [isExpanded, setExpanded] = useState(false);
   const [likertAnswer, setLikertAnswer] = useState<number | null>(null);
-  const [reflectionAnswer, setReflectionAnswer] = useState('');
+  const [reflectionAnswer, setReflectionAnswer] = useState("");
   const [choiceAnswer, setChoiceAnswer] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
+  const toggleExpanded = () => {
+    animateLayout();
+    hapticSelection();
+    setExpanded((value) => !value);
+  };
+
   useEffect(() => {
     if (response) {
-      if (quest.type === 'likert' && typeof response.answer === 'number') {
+      if (quest.type === "likert" && typeof response.answer === "number") {
         setLikertAnswer(response.answer);
       }
-      if (quest.type === 'reflection' && typeof response.answer === 'string') {
+      if (quest.type === "reflection" && typeof response.answer === "string") {
         setReflectionAnswer(response.answer);
       }
-      if (quest.type === 'choice' && typeof response.answer === 'string') {
+      if (quest.type === "choice" && typeof response.answer === "string") {
         setChoiceAnswer(response.answer);
       }
     }
@@ -114,50 +148,76 @@ function QuestCard({ quest, status, response, onComplete }: QuestCardProps) {
       return;
     }
 
-    let answer: QuestResponse['answer'] = null;
-    if (quest.type === 'likert') {
+    let answer: QuestResponse["answer"] = null;
+    if (quest.type === "likert") {
       if (!likertAnswer) {
-        Alert.alert('Pick a rating', 'Select a score between 1 and 5.');
+        hapticNotificationError();
+        Alert.alert("Pick a rating", "Select a score between 1 and 5.");
         return;
       }
       answer = likertAnswer;
-    } else if (quest.type === 'reflection') {
+    } else if (quest.type === "reflection") {
       const trimmed = reflectionAnswer.trim();
       if (trimmed.length < quest.payload.minLength) {
-        Alert.alert('Add more detail', `Aim for at least ${quest.payload.minLength} characters.`);
+        hapticNotificationError();
+        Alert.alert(
+          "Add more detail",
+          `Aim for at least ${quest.payload.minLength} characters.`,
+        );
         return;
       }
       answer = trimmed;
-    } else if (quest.type === 'choice') {
+    } else if (quest.type === "choice") {
       if (!choiceAnswer) {
-        Alert.alert('Choose an option', 'Select the option that fits best right now.');
+        hapticNotificationError();
+        Alert.alert(
+          "Choose an option",
+          "Select the option that fits best right now.",
+        );
         return;
       }
       answer = choiceAnswer;
     }
 
+    animateLayout();
+    hapticImpactLight();
     setSubmitting(true);
     try {
       await onComplete(quest.id, answer);
       setExpanded(false);
+      animateLayout();
     } finally {
       setSubmitting(false);
     }
   };
 
-  const isCompleted = status === 'completed';
+  const isCompleted = status === "completed";
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity onPress={() => setExpanded((value) => !value)} activeOpacity={0.85}>
+      <TouchableOpacity activeOpacity={0.85} onPress={toggleExpanded}>
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>{quest.title}</Text>
             <Text style={styles.cardDescription}>{quest.description}</Text>
           </View>
-          <View style={[styles.statusBadge, isCompleted && styles.statusBadgeCompleted]}>
-            <Text style={[styles.statusLabel, isCompleted && styles.statusLabelCompleted]}>
-              {isCompleted ? 'Completed' : status === 'in_progress' ? 'In progress' : 'Available'}
+          <View
+            style={[
+              styles.statusBadge,
+              isCompleted && styles.statusBadgeCompleted,
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusLabel,
+                isCompleted && styles.statusLabelCompleted,
+              ]}
+            >
+              {isCompleted
+                ? "Completed"
+                : status === "in_progress"
+                  ? "In progress"
+                  : "Available"}
             </Text>
           </View>
         </View>
@@ -174,19 +234,25 @@ function QuestCard({ quest, status, response, onComplete }: QuestCardProps) {
             setChoiceAnswer={setChoiceAnswer}
           />
           <TouchableOpacity
-            style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
+            style={[
+              styles.primaryButton,
+              isSubmitting && styles.primaryButtonDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
               <ActivityIndicator color={palette.textInverted} />
             ) : (
-              <Text style={styles.primaryLabel}>{isCompleted ? 'Update response' : 'Mark complete'}</Text>
+              <Text style={styles.primaryLabel}>
+                {isCompleted ? "Update response" : "Mark complete"}
+              </Text>
             )}
           </TouchableOpacity>
           {response ? (
             <Text style={styles.responseMeta}>
-              Last submitted {new Date(response.completedAt).toLocaleDateString()}
+              Last submitted{" "}
+              {new Date(response.completedAt).toLocaleDateString()}
             </Text>
           ) : null}
         </View>
@@ -214,7 +280,7 @@ function QuestPayload({
   setReflectionAnswer,
   setChoiceAnswer,
 }: QuestPayloadProps) {
-  if (quest.type === 'likert') {
+  if (quest.type === "likert") {
     const { prompt, scaleLabels } = quest.payload;
     return (
       <View style={styles.payloadBlock}>
@@ -227,10 +293,24 @@ function QuestPayload({
           {[1, 2, 3, 4, 5].map((score) => (
             <TouchableOpacity
               key={score}
-              style={[styles.ratingButton, likertAnswer === score && styles.ratingButtonSelected]}
-              onPress={() => setLikertAnswer(score)}
+              style={[
+                styles.ratingButton,
+                likertAnswer === score && styles.ratingButtonSelected,
+              ]}
+              onPress={() => {
+                hapticSelection();
+                animateLayout();
+                setLikertAnswer(score);
+              }}
             >
-              <Text style={[styles.ratingLabel, likertAnswer === score && styles.ratingLabelSelected]}>{score}</Text>
+              <Text
+                style={[
+                  styles.ratingLabel,
+                  likertAnswer === score && styles.ratingLabelSelected,
+                ]}
+              >
+                {score}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -238,7 +318,7 @@ function QuestPayload({
     );
   }
 
-  if (quest.type === 'reflection') {
+  if (quest.type === "reflection") {
     return (
       <View style={styles.payloadBlock}>
         <Text style={styles.payloadPrompt}>{quest.payload.prompt}</Text>
@@ -261,10 +341,24 @@ function QuestPayload({
         {quest.payload.options.map((option) => (
           <TouchableOpacity
             key={option}
-            style={[styles.choiceButton, choiceAnswer === option && styles.choiceButtonSelected]}
-            onPress={() => setChoiceAnswer(option)}
+            style={[
+              styles.choiceButton,
+              choiceAnswer === option && styles.choiceButtonSelected,
+            ]}
+            onPress={() => {
+              hapticSelection();
+              animateLayout();
+              setChoiceAnswer(option);
+            }}
           >
-            <Text style={[styles.choiceLabel, choiceAnswer === option && styles.choiceLabelSelected]}>{option}</Text>
+            <Text
+              style={[
+                styles.choiceLabel,
+                choiceAnswer === option && styles.choiceLabelSelected,
+              ]}
+            >
+              {option}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -279,8 +373,8 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   list: {
     padding: 16,
@@ -295,13 +389,13 @@ const styles = StyleSheet.create({
     borderColor: palette.borderMuted,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: palette.textPrimary,
   },
   cardDescription: {
@@ -324,7 +418,7 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: 12,
     color: palette.textPrimary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   statusLabelCompleted: {
     color: palette.textInverted,
@@ -337,19 +431,19 @@ const styles = StyleSheet.create({
   },
   payloadPrompt: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: palette.textPrimary,
   },
   scaleLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   scaleLabel: {
     fontSize: 12,
     color: palette.textMuted,
   },
   ratingButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   ratingButton: {
@@ -359,7 +453,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     minWidth: 44,
-    alignItems: 'center',
+    alignItems: "center",
   },
   ratingButtonSelected: {
     backgroundColor: palette.accent,
@@ -367,13 +461,13 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     color: palette.textPrimary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   ratingLabelSelected: {
     color: palette.textInverted,
   },
   choiceRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   choiceButton: {
@@ -384,7 +478,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   choiceButtonSelected: {
     backgroundColor: palette.accent,
@@ -392,7 +486,7 @@ const styles = StyleSheet.create({
   },
   choiceLabel: {
     color: palette.textPrimary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   choiceLabelSelected: {
     color: palette.textInverted,
@@ -401,14 +495,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: palette.accent,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryButtonDisabled: {
     opacity: 0.6,
   },
   primaryLabel: {
     color: palette.textInverted,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   input: {
     borderWidth: 1,
@@ -422,12 +516,12 @@ const styles = StyleSheet.create({
   },
   multiline: {
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   responseMeta: {
     fontSize: 12,
     color: palette.textMuted,
-    textAlign: 'right',
+    textAlign: "right",
   },
   errorText: {
     color: palette.error,

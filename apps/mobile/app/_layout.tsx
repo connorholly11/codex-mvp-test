@@ -1,15 +1,22 @@
-import { ReactNode, useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { setApiBaseUrl } from '@purpose/api-client';
-import { supabase } from '../lib/supabase';
-import { useSessionStore } from '../state/useSessionStore';
-import { palette } from '../theme';
+import { setApiBaseUrl } from "@purpose/api-client";
+import { Stack } from "expo-router";
+import { ReactNode, useEffect } from "react";
 
-const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) ?? {};
+import { supabase } from "../lib/supabase";
+import { useSessionStore } from "../state/useSessionStore";
+import { palette } from "../theme";
+
+const env =
+  (
+    globalThis as unknown as {
+      process?: { env?: Record<string, string | undefined> };
+    }
+  ).process?.env ?? {};
 const isDev = __DEV__;
 const API_BASE_URL = isDev
-  ? (env.EXPO_PUBLIC_API_BASE_URL_DEV ?? 'http://localhost:3000')
-  : (env.EXPO_PUBLIC_API_BASE_URL_PROD ?? 'https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app');
+  ? (env.EXPO_PUBLIC_API_BASE_URL_DEV ?? "http://localhost:3000")
+  : (env.EXPO_PUBLIC_API_BASE_URL_PROD ??
+    "https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app");
 
 function SessionProvider({ children }: { children: ReactNode }) {
   const setSession = useSessionStore((state) => state.setSession);
@@ -18,7 +25,7 @@ function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setApiBaseUrl(API_BASE_URL);
-    setStatus('loading');
+    setStatus("loading");
 
     supabase.auth
       .getSession()
@@ -29,14 +36,15 @@ function SessionProvider({ children }: { children: ReactNode }) {
             accessToken: session.access_token,
             userId: session.user.id,
             email: session.user.email ?? null,
-            displayName: (session.user.user_metadata?.full_name as string | null) ?? null,
+            displayName:
+              (session.user.user_metadata?.full_name as string | null) ?? null,
           });
         } else {
           clearSession();
         }
       })
       .catch((error) => {
-        console.error('Failed to hydrate existing session', error);
+        console.error("Failed to hydrate existing session", error);
         clearSession();
       });
 
@@ -48,7 +56,8 @@ function SessionProvider({ children }: { children: ReactNode }) {
           accessToken: session.access_token,
           userId: session.user.id,
           email: session.user.email ?? null,
-          displayName: (session.user.user_metadata?.full_name as string | null) ?? null,
+          displayName:
+            (session.user.user_metadata?.full_name as string | null) ?? null,
         });
       } else {
         clearSession();
@@ -70,15 +79,21 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: palette.primaryBackground },
           headerTintColor: palette.textPrimary,
-          headerTitleStyle: { fontWeight: '600' },
+          headerTitleStyle: { fontWeight: "600" },
           contentStyle: { backgroundColor: palette.primaryBackground },
           headerShadowVisible: false,
         }}
       >
         <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-        <Stack.Screen name="paywall" options={{ title: 'Subscription required', presentation: 'modal' }} />
+        <Stack.Screen
+          name="onboarding/index"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="paywall"
+          options={{ presentation: "modal", title: "Subscription required" }}
+        />
       </Stack>
     </SessionProvider>
   );

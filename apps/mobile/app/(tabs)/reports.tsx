@@ -1,11 +1,24 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack } from 'expo-router';
-import { fetchChatHistory, parsePersonalInsightsReport, type PersonalInsightsReport } from '@purpose/api-client';
-import { logEvent } from '@purpose/analytics';
-import { palette } from '../../theme';
-import { useSessionStore } from '../../state/useSessionStore';
+import { logEvent } from "@purpose/analytics";
+import {
+  fetchChatHistory,
+  parsePersonalInsightsReport,
+  type PersonalInsightsReport,
+} from "@purpose/api-client";
+import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { animateLayout } from "../../lib/animation";
+import { hapticImpactLight, hapticNotificationError } from "../../lib/haptics";
+import { useSessionStore } from "../../state/useSessionStore";
+import { palette } from "../../theme";
 
 export default function ReportsScreen() {
   const accessToken = useSessionStore((state) => state.accessToken);
@@ -21,24 +34,33 @@ export default function ReportsScreen() {
     setError(null);
     fetchChatHistory({ accessToken })
       .then((history) => {
-        const parsed = history.report?.content ? parsePersonalInsightsReport(history.report.content) : null;
+        const parsed = history.report?.content
+          ? parsePersonalInsightsReport(history.report.content)
+          : null;
         setReport(parsed);
         if (parsed) {
-          logEvent('report_viewed', { reportId: 'personal-insights' });
+          animateLayout();
+          hapticImpactLight();
+          logEvent("report_viewed", { reportId: "personal-insights" });
         } else {
-          setError('Complete onboarding to generate your Personal Insights report.');
+          setError(
+            "Complete onboarding to generate your Personal Insights report.",
+          );
         }
       })
       .catch((err) => {
-        console.error('Failed to load personal insights report', err);
-        setError(err instanceof Error ? err.message : 'Unable to load your report.');
+        console.error("Failed to load personal insights report", err);
+        hapticNotificationError();
+        setError(
+          err instanceof Error ? err.message : "Unable to load your report.",
+        );
       })
       .finally(() => setIsLoading(false));
   }, [accessToken]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen options={{ title: 'Personal Insights' }} />
+      <Stack.Screen options={{ title: "Personal Insights" }} />
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={palette.accent} />
@@ -57,8 +79,11 @@ export default function ReportsScreen() {
           {report.sections.map((section) => (
             <View key={section.id} style={styles.section}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
-              {section.content.split('\n\n').map((paragraph, index) => (
-                <Text key={`${section.id}-${index}`} style={styles.sectionParagraph}>
+              {section.content.split("\n\n").map((paragraph, index) => (
+                <Text
+                  key={`${section.id}-${index}`}
+                  style={styles.sectionParagraph}
+                >
                   {paragraph}
                 </Text>
               ))}
@@ -67,7 +92,9 @@ export default function ReportsScreen() {
         </ScrollView>
       ) : (
         <View style={styles.centered}>
-          <Text style={styles.body}>Your report will appear here after onboarding.</Text>
+          <Text style={styles.body}>
+            Your report will appear here after onboarding.
+          </Text>
         </View>
       )}
     </SafeAreaView>
@@ -81,8 +108,8 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 24,
   },
   content: {
@@ -94,14 +121,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
     color: palette.textMuted,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: palette.textPrimary,
   },
   body: {
@@ -118,7 +145,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: palette.textPrimary,
   },
   sectionParagraph: {
@@ -129,6 +156,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: palette.error,
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
