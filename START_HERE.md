@@ -12,13 +12,15 @@ Web onboarding and chat now persist to Supabase and stream replies from Anthropi
 ## Install & Run
 ```bash
 pnpm install
+pnpm dev            # runs Next.js + Expo together (loads .env via scripts/load-env.cjs)
+# Or start surfaces individually:
 pnpm dev:web        # http://localhost:3000 (Next.js)
 pnpm dev:mobile     # Expo dev server (iOS via Expo Go; email + password auth)
 ```
 
 > ⚠️ Never commit real API keys, passwords, or tokens to Git. Keep actual values in local `.env*` files only.
 
-Set these environment variables (store the **real** values in `.env`, `.env.local`, `.env.production`, and Expo `.env`):
+Set these environment variables (store the **real** values in `.env`, `.env.local`, `.env.production`, and create `apps/mobile/.env` locally for Expo):
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_URL>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
@@ -30,9 +32,11 @@ CHAT_SYSTEM_PROMPT="You are an AI coach. Speak with compassionate candor..."    
 # Expo (mobile) - primary surface; automatically switches between dev/prod
 EXPO_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_URL>
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
-EXPO_PUBLIC_API_BASE_URL_DEV=http://localhost:3000
+EXPO_PUBLIC_API_BASE_URL_DEV=http://<YOUR_LAN_IP>:3000
 EXPO_PUBLIC_API_BASE_URL_PROD=<YOUR_PRODUCTION_SITE_URL>
 ```
+
+Expo caches public env vars. After editing `apps/mobile/.env`, restart the bundler with `pnpm --filter mobile start -- --clear` (or delete `apps/mobile/.expo` and `apps/mobile/node_modules/.cache`). Use your machine’s LAN IP for `EXPO_PUBLIC_API_BASE_URL_DEV` when testing on a physical device; the iOS simulator can stick with `http://localhost:3000`.
 
 ## Tests
 ```bash
@@ -107,7 +111,8 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - ✅ Supabase schema + migrations applied (including quest progress indexes)
 - ✅ Web onboarding submits to Supabase, seeds initial chat + report
 - ✅ Web chat streams via Anthropic (SSE) with configurable system prompt + Sonnet 3.5
-- ✅ Expo mobile app signs in (email OTP), completes onboarding (shared schemas), and streams chat replies via Anthropic
+- ✅ Expo mobile app signs in (email OTP) and completes onboarding using shared schemas
+- ✅ Mobile chat streams via Anthropic SSE (parity with web)
 - ✅ Mobile quests, journey metrics, and reports hydrate from Supabase using shared client helpers
 - ✅ Shared analytics buffer logs key events from both surfaces
 - ✅ Deployed to Vercel production with environment-based URL switching

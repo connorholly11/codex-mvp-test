@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:mobile\" --names \"web,mobile\" --prefix-colors \"blue,magenta\"",
     "dev:web": "NODE_OPTIONS=\"--require $INIT_CWD/scripts/load-env.cjs\" pnpm --filter web dev",
     "dev:mobile": "pnpm --filter mobile start",
     "lint": "pnpm lint:web",
@@ -12,6 +13,7 @@
     "test:run": "vitest run"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "vitest": "^2.1.5"
   }
 }
