@@ -3,6 +3,8 @@ import {
   setApiBaseUrl,
   submitOnboarding,
   streamChatMessage,
+  fetchQuestProgress,
+  completeQuest,
 } from '@purpose/api-client/web';
 import type { OnboardingPayload } from '@purpose/api-client/onboarding';
 
@@ -146,5 +148,32 @@ describe('api client', () => {
     });
 
     expect(doneCount).toBe(1);
+  });
+
+  it('fetches quest progress from the configured endpoint', async () => {
+    const fetchMock = vi.fn(async () => noopJsonResponse({ statuses: {}, responses: [] }));
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+    setApiBaseUrl('https://api.example.com');
+
+    await fetchQuestProgress();
+
+    expect(fetchMock).toHaveBeenCalledWith('https://api.example.com/api/quests', expect.anything());
+  });
+
+  it('completes a quest with the provided answer payload', async () => {
+    const fetchMock = vi.fn(async () => noopJsonResponse({ statuses: {}, responses: [] }));
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+    await completeQuest('quest-energy-check-in', 4, { accessToken: 'token-123' });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('/api/quests/quest-energy-check-in/complete');
+    expect(init).toMatchObject({
+      method: 'POST',
+      headers: expect.anything(),
+    });
+    const parsed = JSON.parse((init as RequestInit).body as string);
+    expect(parsed).toEqual({ answer: 4 });
   });
 });

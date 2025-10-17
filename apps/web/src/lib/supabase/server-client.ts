@@ -13,7 +13,7 @@ export async function createServerSupabaseClient(
   const { url, anonKey } = getSupabasePublicEnv();
 
   return createRouteHandlerClient<Database>(
-    { cookies: () => cookieStore },
+    { cookies: async () => cookieStore },
     { supabaseUrl: url, supabaseKey: anonKey },
   ) as unknown as SupabaseDatabaseClient;
 }

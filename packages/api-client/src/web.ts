@@ -1,4 +1,6 @@
 import type { OnboardingPayload } from './onboarding';
+import type { Json } from './types/supabase';
+import type { QuestProgressResponse, QuestStatus } from './quests';
 
 let apiBaseUrl: string | null = null;
 
@@ -25,7 +27,7 @@ export type ChatMessage = {
   metadata?: Record<string, unknown> | null;
 };
 
-export type PersonalInsightsReport = {
+export type PersonalInsightsRecord = {
   report_type: string;
   title: string | null;
   content: unknown;
@@ -52,7 +54,7 @@ export type SubmitOnboardingResponse = {
 export type ChatHistoryResponse = {
   chatSessionId: string;
   messages: ChatMessage[];
-  report: PersonalInsightsReport | null;
+  report: PersonalInsightsRecord | null;
   profile: UserProfile | null;
 };
 
@@ -68,6 +70,7 @@ export type SendChatMessageResponse = {
     metadata: Record<string, unknown> | null;
   };
 };
+
 
 type StreamHandlers = {
   onToken: (token: string) => void;
@@ -277,6 +280,32 @@ export async function streamChatMessage(
       /* noop */
     });
   }
+}
+
+export async function fetchQuestProgress(options?: RequestOptions): Promise<QuestProgressResponse> {
+  const response = await fetch(resolveUrl('/api/quests'), buildRequestInit(undefined, options));
+  await assertOk(response);
+  return (await response.json()) as QuestProgressResponse;
+}
+
+export async function completeQuest(
+  questId: string,
+  answer: Json | null,
+  options?: RequestOptions,
+): Promise<QuestProgressResponse> {
+  const response = await fetch(
+    resolveUrl(`/api/quests/${questId}/complete`),
+    buildRequestInit(
+      {
+        method: 'POST',
+        body: JSON.stringify({ answer }),
+      },
+      options,
+    ),
+  );
+
+  await assertOk(response);
+  return (await response.json()) as QuestProgressResponse;
 }
 
 async function safeParseJson(response: Response): Promise<any | null> {

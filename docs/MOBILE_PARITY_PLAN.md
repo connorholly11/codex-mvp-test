@@ -6,7 +6,7 @@ Purpose is shifting to a **mobile-first** product strategy. This document captur
 
 - **Shared API client (`@purpose/api-client`)** already exposes onboarding schemas, chat helpers, and Supabase typings that both apps can consume.
 - **Web (Next.js)** ships onboarding, chat (streaming + respond endpoints), journey/quests dashboards, personal insights reports, and Supabase-backed auth flows (magic links via Supabase).
-- **Mobile (Expo/React Native)** delivers Supabase OTP sign-in and a single chat screen that posts messages via `sendChatMessage` (non-streaming). No onboarding, quests, reports, or subscription gating yet.
+- **Mobile (Expo/React Native)** delivers Supabase email/password sign-in and a single chat screen that posts messages via `sendChatMessage` (non-streaming). No onboarding, quests, reports, or subscription gating yet.
 
 ## 2. High-Level Goals
 

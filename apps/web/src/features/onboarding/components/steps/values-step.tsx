@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { OnboardingStepComponentProps, ValueOption } from '@/features/onboarding/types';
 
 const VALUE_OPTIONS: { value: ValueOption; label: string }[] = [
@@ -24,7 +24,10 @@ export function ValuesStep({
   onContinue,
   updateData,
 }: OnboardingStepComponentProps) {
-  const rawSelections = data.values.finalRound ?? [];
+  const rawSelections = useMemo<ValueOption[]>(
+    () => (data.values.finalRound ?? []) as ValueOption[],
+    [data.values.finalRound],
+  );
   const [slotSelections, setSlotSelections] = useState<(ValueOption | undefined)[]>(() =>
     POSITION_LABELS.map((_, index) => rawSelections[index]),
   );

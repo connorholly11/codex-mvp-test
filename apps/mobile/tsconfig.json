@@ -4,7 +4,9 @@
     "strict": true,
     "paths": {
       "@/api-client": ["../../packages/api-client/src"],
-      "@/ui": ["../../packages/ui/src"]
+      "@/ui": ["../../packages/ui/src"],
+      "@purpose/analytics": ["../../packages/analytics/src/index.d.ts"],
+      "@purpose/analytics/*": ["../../packages/analytics/src/*"]
     }
   }
 }

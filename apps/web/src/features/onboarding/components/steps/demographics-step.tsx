@@ -26,6 +26,7 @@ const OCCUPATION_OPTIONS = [
 const PRESET_OCCUPATION_LABELS = OCCUPATION_OPTIONS.filter((option) => option.value !== 'custom').map(
   (option) => option.label,
 );
+const PRESET_OCCUPATION_LOOKUP = new Set<string>(PRESET_OCCUPATION_LABELS);
 
 const AGE_MIN = 18;
 const AGE_MAX = 120;
@@ -47,10 +48,10 @@ export function DemographicsStep({
 
   const [ageInput, setAgeInput] = useState(() => (age ? String(age) : ''));
   const [isCustomOccupation, setIsCustomOccupation] = useState(() =>
-    occupation ? !PRESET_OCCUPATION_LABELS.includes(occupation) : false,
+    occupation ? !PRESET_OCCUPATION_LOOKUP.has(occupation) : false,
   );
   const [customOccupation, setCustomOccupation] = useState(() =>
-    occupation && !PRESET_OCCUPATION_LABELS.includes(occupation) ? occupation : '',
+    occupation && !PRESET_OCCUPATION_LOOKUP.has(occupation) ? occupation : '',
   );
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export function DemographicsStep({
   }, [age]);
 
   useEffect(() => {
-    const nextIsCustom = occupation ? !PRESET_OCCUPATION_LABELS.includes(occupation) : false;
+    const nextIsCustom = occupation ? !PRESET_OCCUPATION_LOOKUP.has(occupation) : false;
     setIsCustomOccupation(nextIsCustom);
     setCustomOccupation(nextIsCustom ? occupation ?? '' : '');
   }, [occupation]);
@@ -255,7 +256,7 @@ export function DemographicsStep({
           ) : null}
           {isCustomOccupation ? (
             <p className="text-xs text-muted">
-              Share a short description (e.g., "Climate non-profit founder").
+              Share a short description (e.g., &ldquo;Climate non-profit founder&rdquo;).
             </p>
           ) : null}
         </div>

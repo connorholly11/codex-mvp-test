@@ -22,6 +22,8 @@
       "@/*": ["./src/*"],
       "@purpose/api-client": ["../../packages/api-client/src/index.ts"],
       "@purpose/api-client/*": ["../../packages/api-client/src/*"],
+      "@purpose/analytics": ["../../packages/analytics/src/index.d.ts"],
+      "@purpose/analytics/*": ["../../packages/analytics/src/*"],
       "@purpose/ui": ["../../packages/ui/src/index.ts"],
       "@purpose/ui/*": ["../../packages/ui/src/*"]
     }

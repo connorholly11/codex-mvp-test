@@ -1,19 +1,15 @@
 'use client';
 
 import { useTheme } from '@/components/providers/theme-provider';
-import { useMemo } from 'react';
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const modeToggleLabel =
+    theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
 
   if (process.env.NODE_ENV === 'production') {
     return null;
   }
-
-  const label = useMemo(
-    () => (theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'),
-    [theme],
-  );
 
   return (
     <button
@@ -24,8 +20,8 @@ export function ThemeToggle() {
         }
       }}
       className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-sm transition hover:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-      aria-label={label}
-      title={label}
+      aria-label={modeToggleLabel}
+      title={modeToggleLabel}
     >
       {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
     </button>

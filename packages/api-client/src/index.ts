@@ -17,14 +17,28 @@ export {
   fetchChatHistory,
   sendChatMessage,
   streamChatMessage,
+  fetchQuestProgress,
+  completeQuest,
   setApiBaseUrl,
 } from './web';
 export type {
   ChatHistoryResponse,
   ChatMessage,
-  PersonalInsightsReport,
+  PersonalInsightsRecord,
   SubmitOnboardingResponse,
   UserProfile,
   SendChatMessageResponse,
-  ChatStreamHandlers as ChatStreamHandlers,
+  ChatStreamHandlers,
 } from './web';
+export type { QuestStatus, QuestResponse, QuestProgressResponse, QuestDefinition, QuestType } from './quests';
+export { QUESTS } from './quests';
+export {
+  parsePersonalInsightsReport,
+  generatePersonalInsights,
+  buildPersonalInsightsReport,
+} from './reports';
+export type {
+  PersonalInsightsReport,
+  PersonalInsightsSection,
+  PersonalInsightsSummary,
+} from './reports';

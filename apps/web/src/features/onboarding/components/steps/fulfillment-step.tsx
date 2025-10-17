@@ -114,7 +114,9 @@ export function FulfillmentStep({
                 </div>
                 <p className="text-xs text-muted">
                   {selectedScore
-                    ? `You chose ${SCORE_SHORT_LABELS[selectedScore]}.`
+                    ? `You chose ${
+                        SCORE_SHORT_LABELS[selectedScore as (typeof SCORES)[number]]
+                      }.`
                     : 'Select the number that matches how you feel today.'}
                 </p>
               </div>

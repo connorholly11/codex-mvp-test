@@ -3,7 +3,7 @@
 ## One-Sentence Status
 Web onboarding and chat now persist to Supabase and stream replies from Anthropic; mobile app uses shared API client with automatic dev/prod URL switching; deployed to Vercel production.
 
-> **Focus:** Mobile-first. Treat Expo as the flagship surface; coordinate before making major web-only changes.
+> **Focus:** Mobile-first. Treat Expo as the flagship surface; web stays feature-frozen unless there’s a blocking bug or explicit request.
 
 ## Deployments
 - **Web (Next.js → Vercel):** https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app
@@ -13,7 +13,7 @@ Web onboarding and chat now persist to Supabase and stream replies from Anthropi
 ```bash
 pnpm install
 pnpm dev:web        # http://localhost:3000 (Next.js)
-pnpm dev:mobile     # Expo dev server (iOS via Expo Go; signs in with Supabase magic codes)
+pnpm dev:mobile     # Expo dev server (iOS via Expo Go; email + password auth)
 ```
 
 > ⚠️ Never commit real API keys, passwords, or tokens to Git. Keep actual values in local `.env*` files only.
@@ -94,10 +94,9 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - **Deferred:** Stripe/RevenueCat paywalls, PostHog analytics, dedicated Chat Gateway (enable when sustained streaming concurrency > ~600)
 
 ## Where to Build Next
-1. **Mobile parity follow-ups** – anchor on `docs/MOBILE_PARITY_PLAN.md` to close onboarding, quests, reports, and streaming gaps in the Expo app before adding new surfaces.
-2. **Quests & Journey** – both views hydrate from Supabase today; expand analytics and timeline visuals as new data arrives.
-3. **Reports UI** – personal insights viewer loads from Supabase; extend to weekly/monthly reports when those backends ship.
-4. **Testing** – add Vitest/Playwright coverage for `/api/onboarding`, `/api/chat/*`, and the new quests endpoints (mock Anthropic+Supabase where possible).
+1. **Mobile polish** – follow `docs/MOBILE_PARITY_PLAN.md` for the remaining integrations (Clerk/RevenueCat, push cadence, voice prep). Avoid net-new web features.
+2. **Analytics & notifications** – wire queued events to a backend sink and schedule real notifications (Expo + Supabase cron) once the product loops are locked.
+3. **Mobile QA** – build Expo test scenarios, add Vitest/Playwright coverage where practical, and prep for TestFlight once subscriptions land.
 
 ## Useful Docs
 - `IMPLEMENTING_SUPABASE_ANTHROPIC.md` (root): architecture + scaling notes (now partially complete).
@@ -108,10 +107,11 @@ We use **SQL migrations via Supabase CLI** (no ORM required for schema):
 - ✅ Supabase schema + migrations applied (including quest progress indexes)
 - ✅ Web onboarding submits to Supabase, seeds initial chat + report
 - ✅ Web chat streams via Anthropic (SSE) with configurable system prompt + Sonnet 3.5
-- ✅ Expo mobile app signs in (email OTP) and chats via Supabase/Anthropic (non-streaming endpoint)
-- ✅ Quests/Journey hydrate from Supabase (no local storage persistence remains)
+- ✅ Expo mobile app signs in (email OTP), completes onboarding (shared schemas), and streams chat replies via Anthropic
+- ✅ Mobile quests, journey metrics, and reports hydrate from Supabase using shared client helpers
+- ✅ Shared analytics buffer logs key events from both surfaces
 - ✅ Deployed to Vercel production with environment-based URL switching
-- 🔜 Broaden automated tests + add additional report/quest analytics once backends are ready
+- 🔜 Wire Clerk + RevenueCat for production auth/subscriptions and expand end-to-end mobile tests
 
 ## Future Notes
 - Add Supabase RLS migrations enforcing `user_id = auth.uid()` (and session-based policies for chat messages) before onboarding external testers.
