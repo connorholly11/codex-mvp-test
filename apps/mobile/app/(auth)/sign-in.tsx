@@ -22,6 +22,23 @@ import { supabase } from "../../lib/supabase";
 import { useSessionStore } from "../../state/useSessionStore";
 import { palette } from "../../theme";
 
+const introCopy = {
+  "sign-in": {
+    title: "Welcome back to Purpose",
+    subtitle:
+      "Pick up where you left off. Fermi still remembers the patterns you noticed last time.",
+    cta: "Sign in",
+    helper: "Need an account? Sign up instead.",
+  },
+  "sign-up": {
+    title: "Begin your Purpose journey",
+    subtitle:
+      "Your values, constraints, and patterns stay private. Fermi uses them to deliver radical clarity.",
+    cta: "Create account",
+    helper: "Already have an account? Sign in.",
+  },
+} as const;
+
 export default function SignInScreen() {
   const setStatus = useSessionStore((state) => state.setStatus);
   const [email, setEmail] = useState("");
@@ -30,6 +47,8 @@ export default function SignInScreen() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const copy = introCopy[mode];
 
   const handleSubmit = async () => {
     const trimmedEmail = email.trim().toLowerCase();
@@ -63,7 +82,7 @@ export default function SignInScreen() {
           hapticNotificationSuccess();
         } else {
           setStatusMessage(
-            "Account created. Please confirm your email, then sign in.",
+            "Account created. Confirm the email we just sent, then sign in.",
           );
           setMode("sign-in");
           setPassword("");
@@ -104,41 +123,55 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen options={{ title: "Sign in to Purpose" }} />
+      <Stack.Screen options={{ title: "Access Purpose" }} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={64}
         style={styles.keyboardAvoiding}
       >
+        <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>{copy.title}</Text>
+          <Text style={styles.heroSubtitle}>{copy.subtitle}</Text>
+        </View>
         <View style={styles.card}>
-          <Text style={styles.title}>Access Purpose</Text>
-          <Text style={styles.subtitle}>
-            {mode === "sign-in"
-              ? "Enter your email and password to continue your coaching journey."
-              : "Create your Purpose account with an email and password. You can always update details later."}
+          <Text style={styles.metaLabel}>
+            {mode === "sign-in" ? "Continue" : "Create account"}
           </Text>
-          <TextInput
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!isSubmitting}
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            placeholderTextColor={palette.textMuted}
-            style={styles.input}
-            value={email}
-          />
-          <TextInput
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!isSubmitting}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor={palette.textMuted}
-            secureTextEntry
-            style={styles.input}
-            value={password}
-          />
+          <View style={styles.inputColumn}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isSubmitting}
+              keyboardType="email-address"
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              placeholderTextColor={palette.textMuted}
+              style={styles.input}
+              value={email}
+            />
+          </View>
+          <View style={styles.inputColumn}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isSubmitting}
+              onChangeText={setPassword}
+              placeholder="At least 6 characters"
+              placeholderTextColor={palette.textMuted}
+              secureTextEntry
+              style={styles.input}
+              value={password}
+            />
+          </View>
+          <View style={styles.trustCallout}>
+            <Text style={styles.trustTitle}>Your data, your control</Text>
+            <Text style={styles.trustCopy}>
+              Purpose is coaching, not therapy. You can export or delete your
+              data anytime.
+            </Text>
+          </View>
           {statusMessage ? (
             <Text style={styles.status}>{statusMessage}</Text>
           ) : null}
@@ -147,14 +180,13 @@ export default function SignInScreen() {
             activeOpacity={0.85}
             disabled={isSubmitting}
             onPress={handleSubmit}
-            style={styles.button}
+            style={[
+              styles.button,
+              isSubmitting && styles.buttonDisabled,
+            ]}
           >
             <Text style={styles.buttonLabel}>
-              {isSubmitting
-                ? "Working..."
-                : mode === "sign-in"
-                  ? "Sign in"
-                  : "Create account"}
+              {isSubmitting ? "Working…" : copy.cta}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -162,11 +194,7 @@ export default function SignInScreen() {
             disabled={isSubmitting}
             onPress={toggleMode}
           >
-            <Text style={styles.switchLabel}>
-              {mode === "sign-in"
-                ? "Need an account? Sign up instead."
-                : "Already have an account? Sign in."}
-            </Text>
+            <Text style={styles.switchLabel}>{copy.helper}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -183,31 +211,59 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    paddingHorizontal: 24,
+    gap: 20,
+  },
+  heroCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    backgroundColor: palette.surfaceElevated,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  heroTitle: {
+    color: palette.textPrimary,
+    fontSize: 26,
+    fontWeight: "700",
+  },
+  heroSubtitle: {
+    color: palette.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
   },
   card: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 420,
     backgroundColor: palette.surface,
     padding: 24,
-    borderRadius: 24,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: palette.borderMuted,
-    gap: 16,
-    shadowColor: "#121212",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    gap: 18,
+    shadowColor: "#000000",
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
-  title: {
-    color: palette.textPrimary,
-    fontSize: 22,
-    fontWeight: "700",
+  metaLabel: {
+    textTransform: "uppercase",
+    fontSize: 12,
+    letterSpacing: 1.2,
+    color: palette.textMuted,
+    fontWeight: "600",
   },
-  subtitle: {
+  inputColumn: {
+    gap: 8,
+  },
+  inputLabel: {
     color: palette.textMuted,
     fontSize: 13,
+    fontWeight: "600",
   },
   input: {
     borderRadius: 16,
@@ -217,6 +273,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: palette.textPrimary,
     fontSize: 16,
+    backgroundColor: palette.surface,
+  },
+  trustCallout: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    backgroundColor: palette.surfaceElevated,
+    padding: 16,
+    gap: 6,
+  },
+  trustTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: palette.accent,
+  },
+  trustCopy: {
+    fontSize: 13,
+    color: palette.textSecondary,
+    lineHeight: 18,
   },
   status: {
     color: palette.textMuted,
@@ -229,8 +304,16 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: palette.accent,
     borderRadius: 999,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: "center",
+    shadowColor: palette.accent,
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonLabel: {
     color: palette.textInverted,
@@ -238,10 +321,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   switchLabel: {
-    marginTop: 8,
+    marginTop: 4,
     color: palette.accent,
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
     textAlign: "center",
   },
 });

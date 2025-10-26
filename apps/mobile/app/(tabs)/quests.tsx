@@ -89,6 +89,13 @@ export default function QuestsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
+          <View style={styles.heroCard}>
+            <Text style={styles.heroTitle}>Prime Fermi’s memory</Text>
+            <Text style={styles.heroBody}>
+              These small prompts tune Fermi to your psychology. A tiny daily
+              deposit keeps the coaching sharp and personal.
+            </Text>
+          </View>
           {QUESTS.map((quest) => (
             <QuestCard
               key={quest.id}
@@ -379,6 +386,24 @@ const styles = StyleSheet.create({
   list: {
     padding: 16,
     gap: 16,
+  },
+  heroCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    backgroundColor: palette.surface,
+    padding: 18,
+    gap: 8,
+  },
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: palette.textPrimary,
+  },
+  heroBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: palette.textSecondary,
   },
   card: {
     backgroundColor: palette.surface,

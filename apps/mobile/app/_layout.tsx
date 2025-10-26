@@ -1,6 +1,7 @@
 import { setApiBaseUrl } from "@purpose/api-client";
 import { Stack } from "expo-router";
 import { ReactNode, useEffect } from "react";
+import { NativeModules } from "react-native";
 
 import { supabase } from "../lib/supabase";
 import { useSessionStore } from "../state/useSessionStore";
@@ -12,11 +13,63 @@ const env =
       process?: { env?: Record<string, string | undefined> };
     }
   ).process?.env ?? {};
+
 const isDev = __DEV__;
+
+function normalizeUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+  return url.replace(/\/+$/, "");
+}
+
+function deriveLanUrlFromSource(): string | null {
+  const sourceCode = (NativeModules as {
+    SourceCode?: { scriptURL?: string };
+  }).SourceCode;
+  const scriptURL = sourceCode?.scriptURL;
+  if (!scriptURL) {
+    return null;
+  }
+  try {
+    const parsed = new URL(scriptURL);
+    if (
+      !parsed.hostname ||
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1"
+    ) {
+      return null;
+    }
+    return `${parsed.protocol}//${parsed.hostname}:3000`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveDevApiBaseUrl(): string {
+  const configured = normalizeUrl(env.EXPO_PUBLIC_API_BASE_URL_DEV);
+  if (configured && !configured.includes("localhost")) {
+    return configured;
+  }
+
+  const derived = normalizeUrl(deriveLanUrlFromSource());
+  if (derived) {
+    if (configured) {
+      console.info(
+        "[purpose] Using Expo LAN host for API base URL instead of localhost:",
+        derived,
+      );
+    }
+    return derived;
+  }
+
+  return configured ?? "http://localhost:3000";
+}
+
 const API_BASE_URL = isDev
-  ? (env.EXPO_PUBLIC_API_BASE_URL_DEV ?? "http://localhost:3000")
-  : (env.EXPO_PUBLIC_API_BASE_URL_PROD ??
-    "https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app");
+  ? resolveDevApiBaseUrl()
+  : normalizeUrl(env.EXPO_PUBLIC_API_BASE_URL_PROD) ??
+    "https://codex-mvp-test-8gl8n4uly-connor-hollys-projects.vercel.app";
 
 function SessionProvider({ children }: { children: ReactNode }) {
   const setSession = useSessionStore((state) => state.setSession);
@@ -89,10 +142,6 @@ export default function RootLayout() {
         <Stack.Screen
           name="onboarding/index"
           options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="paywall"
-          options={{ presentation: "modal", title: "Subscription required" }}
         />
       </Stack>
     </SessionProvider>

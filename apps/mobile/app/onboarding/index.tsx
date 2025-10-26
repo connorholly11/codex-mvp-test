@@ -292,11 +292,26 @@ function renderStep({
     case 0:
       return (
         <View style={styles.card}>
+          <Text style={styles.metaLabel}>Meet Fermi</Text>
           <Text style={styles.title}>Welcome to Purpose</Text>
           <Text style={styles.body}>
-            We’ll capture a few details so Fermi can personalise coaching right
-            away.
+            Over the next few minutes we’ll map the moments that matter most so
+            Fermi can coach with radical clarity from day one.
           </Text>
+          <View style={styles.checkList}>
+            <Text style={styles.checkItem}>• Surface what fuels and drains you</Text>
+            <Text style={styles.checkItem}>• Capture values you won’t compromise</Text>
+            <Text style={styles.checkItem}>
+              • Name the constraint Fermi should keep an eye on
+            </Text>
+          </View>
+          <View style={styles.callout}>
+            <Text style={styles.calloutLabel}>What to expect</Text>
+            <Text style={styles.calloutBody}>
+              This takes ~6 minutes. Bring honesty, we’ll bring compassionate
+              candor.
+            </Text>
+          </View>
         </View>
       );
     case 1:
@@ -601,6 +616,10 @@ function renderStep({
               mental health treatment.
             </Text>
           </View>
+          <Text style={styles.helperText}>
+            You’re always in control. Export or delete your data anytime from
+            Settings.
+          </Text>
         </View>
       );
     default:
@@ -655,9 +674,41 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: palette.textPrimary,
   },
+  metaLabel: {
+    textTransform: "uppercase",
+    fontSize: 11,
+    letterSpacing: 1.1,
+    color: palette.textMuted,
+    fontWeight: "600",
+  },
   body: {
     fontSize: 14,
     color: palette.textMuted,
+  },
+  checkList: {
+    gap: 6,
+  },
+  checkItem: {
+    fontSize: 13,
+    color: palette.textSecondary,
+  },
+  callout: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    backgroundColor: palette.surfaceElevated,
+    padding: 16,
+    gap: 6,
+  },
+  calloutLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: palette.accent,
+  },
+  calloutBody: {
+    fontSize: 13,
+    color: palette.textSecondary,
+    lineHeight: 18,
   },
   input: {
     borderWidth: 1,

@@ -34,6 +34,39 @@ import { palette } from "../../theme";
 
 type UiMessage = ChatMessage & { pending?: boolean };
 
+function getTimeOfDayGreeting(now: Date) {
+  const hour = now.getHours();
+  if (hour < 12) {
+    return "Good morning";
+  }
+  if (hour < 17) {
+    return "Good afternoon";
+  }
+  return "Good evening";
+}
+
+function buildHeroTitle(displayName: string | null) {
+  const greeting = getTimeOfDayGreeting(new Date());
+  if (!displayName) {
+    return `${greeting}!`;
+  }
+  const name = displayName.split(" ")[0];
+  return `${greeting}, ${name}`;
+}
+
+const ENCOURAGEMENTS = [
+  "Tiny shifts lead to wild momentum.",
+  "Every question is data Fermi can reuse.",
+  "Clarity loves consistent curiosity.",
+  "Capture what feels true right now.",
+];
+
+function pickEncouragement(displayName: string | null) {
+  const base = displayName?.length ?? 0;
+  const index = (base + new Date().getDate()) % ENCOURAGEMENTS.length;
+  return ENCOURAGEMENTS[index];
+}
+
 export default function ChatScreen() {
   const navigation = useNavigation();
   const accessToken = useSessionStore((state) => state.accessToken);
@@ -129,12 +162,16 @@ export default function ChatScreen() {
     };
   }, []);
 
-  const headerSubtitle = useMemo(() => {
-    if (!displayName) {
-      return "Prototype mobile chat";
-    }
-    return `Chatting as ${displayName}`;
-  }, [displayName]);
+  const heroTitle = useMemo(
+    () => buildHeroTitle(displayName),
+    [displayName],
+  );
+  const heroSubtitle = useMemo(
+    () => pickEncouragement(displayName),
+    [displayName],
+  );
+  const hasMessages = messages.length > 0;
+  const isAssistantResponding = messages.some((message) => message.pending);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -301,24 +338,27 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={96}
       >
-        <View style={styles.chatHeader}>
-          <Text style={styles.chatTitle}>Chat with Fermi</Text>
-          <Text style={styles.chatSubtitle}>{headerSubtitle}</Text>
+        <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>{heroTitle}</Text>
+          <Text style={styles.heroSubtitle}>{heroSubtitle}</Text>
         </View>
         {report ? <ReportCard report={report} /> : null}
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={palette.accent} />
           </View>
-        ) : (
+        ) : hasMessages ? (
           <FlatList
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <ChatBubble message={item} />}
             contentContainerStyle={styles.listContent}
           />
+        ) : (
+          <EmptyState />
         )}
         {error ? <Text style={styles.chatError}>{error}</Text> : null}
+        {isAssistantResponding ? <TypingIndicator /> : null}
         <View style={styles.composer}>
           <TextInput
             style={styles.input}
@@ -392,6 +432,29 @@ function ReportCard({ report }: { report: PersonalInsightsReport }) {
   );
 }
 
+function TypingIndicator() {
+  return (
+    <View style={styles.typingContainer}>
+      <View style={styles.typingDot} />
+      <View style={styles.typingDot} />
+      <View style={styles.typingDot} />
+      <Text style={styles.typingCopy}>Fermi is reflecting…</Text>
+    </View>
+  );
+}
+
+function EmptyState() {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyTitle}>Let’s start the conversation</Text>
+      <Text style={styles.emptyBody}>
+        Share something you’re navigating or ask “What pattern do you notice
+        about me?” Fermi adapts with every message you send.
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -404,17 +467,23 @@ const styles = StyleSheet.create({
     backgroundColor: palette.primaryBackground,
     gap: 12,
   },
-  chatHeader: {
-    gap: 4,
+  heroCard: {
+    borderRadius: 28,
+    backgroundColor: palette.surfaceElevated,
+    paddingVertical: 20,
+    paddingHorizontal: 22,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    gap: 6,
   },
-  chatTitle: {
+  heroTitle: {
     color: palette.textPrimary,
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
   },
-  chatSubtitle: {
-    color: palette.textMuted,
-    fontSize: 13,
+  heroSubtitle: {
+    color: palette.textSecondary,
+    fontSize: 14,
   },
   listContent: {
     paddingBottom: 16,
@@ -517,5 +586,48 @@ const styles = StyleSheet.create({
     color: palette.textMuted,
     fontSize: 12,
     fontWeight: "600",
+  },
+  typingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    marginBottom: 8,
+    backgroundColor: palette.surfaceElevated,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: palette.accent,
+    opacity: 0.7,
+  },
+  typingCopy: {
+    color: palette.textSecondary,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  emptyState: {
+    borderRadius: 24,
+    backgroundColor: palette.surface,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: palette.textPrimary,
+  },
+  emptyBody: {
+    fontSize: 14,
+    color: palette.textSecondary,
+    lineHeight: 20,
   },
 });
