@@ -106,7 +106,7 @@ Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on 
 - [ ] C1
 - [ ] M1:
   - [x] T1.1
-  - [ ] T1.2
+  - [x] T1.2
   - [ ] T1.3
   - [ ] T1.4
 - [ ] C2
@@ -124,7 +124,7 @@ Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on 
 
 ## Decision Log (to be updated by Execution-Agent)
 - 2025-10-26 — Completed T1.1 (Tool protocol & consent copy) — Authored `TOOL_PROTOCOL.md` and `TOOL_CONSENT_COPY.md`; conformance checklist holds (no DB change, no external calls, validation captured in spec).
-- <date> — <decision> — <reasoning>
+- 2025-10-26 — Completed T1.2 (Tool manifest & schemas) — Added `ACTIONS_MANIFEST_SPEC.md` and shared manifest module `packages/api-client/src/tool-manifest.ts` with zod validators; no database or network changes introduced.
 
 ## UNBLOCK REQUEST Template
 - Problem:
