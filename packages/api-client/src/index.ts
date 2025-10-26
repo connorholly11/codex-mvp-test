@@ -20,6 +20,8 @@ export {
   fetchQuestProgress,
   completeQuest,
   setApiBaseUrl,
+  fetchNudges,
+  updateNudgeStatus,
 } from './web';
 export type {
   ChatHistoryResponse,
@@ -29,6 +31,8 @@ export type {
   UserProfile,
   SendChatMessageResponse,
   ChatStreamHandlers,
+  Nudge,
+  NudgeStatus,
 } from './web';
 export type { QuestStatus, QuestResponse, QuestProgressResponse, QuestDefinition, QuestType } from './quests';
 export { QUESTS } from './quests';

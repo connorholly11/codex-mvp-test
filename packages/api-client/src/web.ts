@@ -73,6 +73,18 @@ export type SendChatMessageResponse = {
   };
 };
 
+export type NudgeStatus = 'pending' | 'scheduled' | 'sent' | 'dismissed';
+
+export type Nudge = {
+  id: string;
+  kind: string;
+  status: NudgeStatus;
+  scheduledFor: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
 
 type StreamHandlers = {
   onToken: (token: string) => void;
@@ -173,6 +185,58 @@ export async function sendChatMessage(
       ...payload.assistantMessage,
       metadata: normalizeAssistantMetadata(payload.assistantMessage.metadata ?? null),
     },
+  };
+}
+
+export async function fetchNudges(
+  options?: RequestOptions & { statuses?: NudgeStatus[] },
+): Promise<Nudge[]> {
+  const url = new URL(resolveUrl('/api/nudges'), 'http://localhost');
+  if (options?.statuses && options.statuses.length > 0) {
+    url.searchParams.set('status', options.statuses.join(','));
+  }
+
+  const response = await fetch(url.toString(), buildRequestInit(undefined, options));
+  await assertOk(response);
+  const payload = (await response.json()) as { items: Array<Record<string, unknown>> };
+  return (payload.items ?? []).map((item) => ({
+    id: String(item.id ?? ''),
+    kind: String(item.kind ?? ''),
+    status: (item.status ?? 'pending') as NudgeStatus,
+    scheduledFor: String(item.scheduled_for ?? item.scheduledFor ?? ''),
+    payload: (item.payload as Record<string, unknown>) ?? {},
+    createdAt: String(item.created_at ?? item.createdAt ?? ''),
+    updatedAt: String(item.updated_at ?? item.updatedAt ?? ''),
+  }));
+}
+
+export async function updateNudgeStatus(
+  input: { id: string; status: NudgeStatus; context?: Record<string, unknown> },
+  options?: RequestOptions,
+): Promise<Nudge> {
+  const response = await fetch(
+    resolveUrl('/api/nudges'),
+    buildRequestInit(
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+      options,
+    ),
+  );
+
+  await assertOk(response);
+  const payload = (await response.json()) as { item: Record<string, unknown> };
+  const item = payload.item ?? {};
+
+  return {
+    id: String(item.id ?? input.id),
+    kind: String(item.kind ?? ''),
+    status: (item.status ?? input.status) as NudgeStatus,
+    scheduledFor: String(item.scheduled_for ?? item.scheduledFor ?? ''),
+    payload: (item.payload as Record<string, unknown>) ?? {},
+    createdAt: String(item.created_at ?? item.createdAt ?? new Date().toISOString()),
+    updatedAt: String(item.updated_at ?? item.updatedAt ?? new Date().toISOString()),
   };
 }
 

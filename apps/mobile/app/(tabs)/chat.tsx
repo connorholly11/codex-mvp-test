@@ -47,6 +47,7 @@ import {
   formatReminderTarget,
   formatTimerDuration,
 } from "../../lib/time";
+import { syncPendingNudges } from "../../lib/nudges";
 import { supabase } from "../../lib/supabase";
 import { useSessionStore } from "../../state/useSessionStore";
 import { palette } from "../../theme";
@@ -257,6 +258,7 @@ export default function ChatScreen() {
   const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
   const [handledTools, setHandledTools] = useState<Record<string, ToolExecutionStatus>>({});
   const toolSeenRef = useRef(new Set<string>());
+  const nudgesSyncedRef = useRef(false);
   const [isExecutingTool, setIsExecutingTool] = useState(false);
   const [toolError, setToolError] = useState<string | null>(null);
 
@@ -394,6 +396,19 @@ export default function ChatScreen() {
       streamAbortController.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!accessToken || nudgesSyncedRef.current) {
+      return;
+    }
+
+    nudgesSyncedRef.current = true;
+
+    syncPendingNudges({ accessToken }).catch((error) => {
+      console.warn("Failed to sync nudges", error);
+      nudgesSyncedRef.current = false;
+    });
+  }, [accessToken]);
 
   const heroTitle = useMemo(
     () => buildHeroTitle(displayName),

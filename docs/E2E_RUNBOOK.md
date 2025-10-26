@@ -40,12 +40,19 @@
 2. Confirm; share sheet should open with `.ics` file.
 3. If sharing unavailable, ensure confirmation message mentions local save and analytics logs `{ shared: false }`.
 
-## 6. Web Read-Only Sanity
+## 6. Nudge Sync
+
+1. Insert a manual row in `nudges` with kind `schedule_reminder`, a future `scheduled_for`, and payload `{ "title": "Weekly pulse", "body": "How energized do you feel?" }`.
+2. Relaunch the mobile app (ensure notifications enabled).
+3. Confirm a local notification is scheduled and `nudge_scheduled` appears in analytics.
+4. Verify Supabase row status transitions to `scheduled` with context payload.
+
+## 7. Web Read-Only Sanity
 
 1. Open the same conversation on web after running steps above.
 2. Verify each assistant message shows the tool badge with status (confirmed/dismissed) and no runtime errors surface.
 
-## 7. Analytics Smoke Check
+## 8. Analytics Smoke Check
 
 - Use analytics debug console to confirm events for each tool (`chat_tool_*`).
 - Ensure failure codes appear when permissions are denied.

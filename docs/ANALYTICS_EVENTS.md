@@ -11,6 +11,7 @@ All events route through `@purpose/analytics`. Names are kebab-case, payloads ar
 | `chat_tool_failed` | When execution throws (permissions, validation, unknown). | `{ name: ToolName, code: string, message: string }` |
 | `chat_tool_dismissed` | User taps the secondary CTA. | `{ name: ToolName }` |
 | `chat_tool_unknown` | Model proposed a tool not in the manifest. | `{ name: string }` |
+| `nudge_scheduled` | A pending nudge is converted into a local reminder. | `{ nudgeId: string, kind: string, scheduledFor: ISOString }` |
 
 ## Payload Notes
 
