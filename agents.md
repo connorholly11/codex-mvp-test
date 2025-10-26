@@ -1,8 +1,11 @@
-# Execution Rules for plan_id: FEAT-mobile-tool-bridge-v2
-- Work on branch `feat/FEAT-mobile-tool-bridge-v2-bridge`.
-- Per task: implement minimal diff → run verification → update **Progress** and **Decision Log** in `plans.md` → commit `[FEAT-mobile-tool-bridge-v2][<task_id>] <verb>: <summary>`.
+# Execution Rules for plan_id: FEAT-dual-ai-v1
+
+- Work on branch `feat/FEAT-dual-ai-v1-dual-ai`.
+- Per task: implement minimal diff → run verification → update **Progress** and **Decision Log** in `plans.md` → commit:
+  - `[FEAT-dual-ai-v1][T1.2] Refactor: add Atlas prompt builder`
 - If verification is red for 2 consecutive loops or secrets/config are missing, write **UNBLOCK_REQUEST** in `plans.md` and halt.
-- Trigger review (local thread or PR) after each milestone; address findings; re-verify.
-- Prefer surgical diffs; avoid broad rewrites.
-- Uphold guardrails: explicit consent; fenced JSON only; no server-executed device tools; additive SQL with rollback.
+- Trigger review after each milestone; address feedback; re‑verify.
+- Prefer surgical diffs; avoid unrelated refactors.
 - Record any new/changed verification commands in `plans.md`.
+- Keep API **backward compatible**: defaults to `assistant='fermi'` if omitted until all clients updated.
+- Respect PII: do not log message content; only event names and non-sensitive counts/durations.

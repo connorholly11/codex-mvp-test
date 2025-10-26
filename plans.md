@@ -1,136 +1,132 @@
-# Mobile Tools + Proactive Nudges (API-compatible) — Execution Plan (plan_id: FEAT-mobile-tool-bridge-v2)
+# Dual AI Chat, Voice Mode, Celebrations, and Memory Preference — Execution Plan (plan_id: FEAT-dual-ai-v1)
 
 ## Overview
-Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on mobile** (reminders, timers, location, notes, calendar ICS) and **gentle proactive nudges** (weekly pulse + stale-check). We keep the current Next.js API + shared client; we add a **tool manifest**, **server parser** that attaches `tool_call` metadata, a **mobile confirm sheet + adapter**, and **two additive tables** (`nudges`, `actions_log`). No context/memory yet—reserved for a mem0 phase.
+Enable two assistants (Fermi & Atlas) with isolated threads, add a user preference for memory sharing, deliver voice input/TTS, and add visual polish (orbit & subtle confetti). Expected impact: clearer personas, higher engagement, lower friction to share via voice, small delights.
 
 ## Architecture Outline
-- Components:
-  - Tool Manifest & Validator — declare tools, zod schemas, consent copy; shared by server/client.
-  - Server Stream Parser — parse fenced tool JSON; attach `metadata.tool_call`; feature-flagged.
-  - Tool Bridge (Client, Mobile) — confirm/cancel UI; execute local tools; post confirmations; analytics.
-  - Web Read-Only Renderer — suggestive card + .ics fallback.
-  - Proactive Nudge Engine — cron populates `nudges`; mobile polls & schedules locally.
-- Interfaces:
-  - Tool-Call Block Protocol — fenced ```tool JSON in assistant text.
-  - Streaming Final Event (extended) — `{metadata: { tool_call? }}`.
-  - Nudges API — GET pending; POST status.
-- Data model/migrations:
-  - Additive: `nudges`, `actions_log` (see `NUDGES_SCHEMA.sql`).
-  - Use existing `chat_messages.metadata` to store `tool_call`.
-- Quality budgets:
-  - Perf p50 200ms / p95 800ms unchanged; reliability 99.9%; privacy: ephemeral location, minimal logs; operability: flags + analytics.
+- **Components**
+  - PromptBuilder, ChatStreamAPI, ChatHistoryAPI, PreferencesAPI, TranscribeAPI, (optional) SynthesizeAPI
+  - WebChatUI, MobileChatScreen
+  - SharedApiClient (assistant-aware)
+  - Analytics events
+- **Interfaces**
+  - `GET /api/chat/history?assistant=fermi|atlas`
+  - `POST /api/chat/stream` (SSE) `{ message, assistant, options? }`
+  - `GET|PUT /api/user/preferences`
+  - `POST /api/chat/transcribe` (multipart/form-data)
+  - `POST /api/chat/synthesize` (optional)
+- **Data model/migrations**
+  - New enum `assistant_kind` with values `fermi`, `atlas`
+  - `chat_sessions.assistant_type assistant_kind not null default 'fermi'`
+  - `profiles.allow_memory_sharing boolean not null default false`
+  - Indexes: `(user_id, assistant_type)`, `(user_id, created_at desc)` remains
+  - Backfill existing rows with `'fermi'`
+- **Quality budgets**
+  - Perf p50 200ms, p95 800ms (non-stream parts); reliability 99.9%; auth on all endpoints; no audio storage by default; SSE heartbeats.
 
 ## Scope & Non-Goals
-- In:
-  - Tools: `schedule_reminder`, `start_timer`, `get_location` (coarse), `save_note`, `create_ics_event`.
-  - Nudges: weekly pulse + stale-check; mobile schedules locally.
-  - Web: read-only suggestion card + .ics fallback.
-- Out:
-  - Context/memory building (deferred to mem0 integration).
-  - Server-executed tools or server push scheduling.
-  - Storing raw coordinates or sensitive note content.
+- In: assistant routing, prompts, UI toggles, voice input/TTS MVP, confetti & orbit visuals, DB preference.
+- Out: cross-assistant memory logic, advanced gamification, server TTS productionization, real-time WebRTC.
 
 ## Assumptions
-- Two-turn UX is acceptable (proposal → confirmation → follow-up message).
-- ISO-8601 with timezone offset required in tool args.
-- Location remains ephemeral; only city/region is displayed.
-- Feature flags available to disable tools quickly.
+- STT: Whisper-compatible; TTS: Web Speech (web) & Expo Speech (mobile); no audio persistence.
+- Switching assistants auto-creates a per-assistant session.
+- Preference is server-persisted for authenticated users; LS fallback for preview.
 
 ## Checkpoints
-- **C1 Server parses tool blocks** — Proof: assistant message contains `metadata.tool_call`; parser tests pass.
-- **C2 Mobile executes reminder/location** — Proof: OS reminder scheduled; permission happy/denied paths handled.
-- **C3 Nudge pipeline** — Proof: pending `nudges` fetched and scheduled; status updated.
+- **C1 DB & API** — Proof: migration applied; history/stream accept `assistant`.
+- **C2 Prompts** — Proof: PromptBuilder returns distinct Fermi vs Atlas.
+- **C3 Voice** — Proof: audio → transcript JSON → message with `metadata.voice.input`.
+- **C4 Visuals** — Proof: orbit while Fermi streaming; confetti on quest completion.
 
 ## Milestones & Tasks
-- **M1 Protocol + Parser + Types**
-  - T1.1 Define tool protocol & consent copy (est_verify_loops: 2)
-  - T1.2 Specify manifest & args schemas (2)
-  - T1.3 Extend API client metadata contract (2)
-  - T1.4 Parser test plan & cases (2)
-  - Acceptance:
-    - `TOOL_PROTOCOL.md` defines fenced JSON + tools list
-    - Parser attaches `tool_call` with validation result
-    - Client types expose `metadata.tool_call`
-- **M2 Mobile Tool Bridge**
-  - T2.1 Confirm sheet spec (2)
-  - T2.2 Tools adapter spec (2)
-  - T2.3 Analytics events documented (1)
-  - T2.4 E2E runbook (1)
-  - Acceptance:
-    - Reminder & location work with consent
-    - Confirmation message posted; analytics visible
-- **M3 Nudges + Web Read-Only + Tokens**
-  - T3.1 Additive SQL for `nudges` & `actions_log` (1)
-  - T3.2 Nudges API spec (1)
-  - T3.3 Web suggestion card spec (1)
-  - T3.4 Design tokens doc (1)
-  - Acceptance:
-    - Tables migrate cleanly; poll/update flow documented
-    - Web card spec finalized; tokens ready
+- **M1 Dual assistant foundation**
+  - T1.1 Migration (enum, columns, indexes, backfill) (est_verify_loops: 2)
+  - T1.2 PromptBuilder refactor; Atlas prompt
+  - T1.3 `/stream` & `/history` accept/use `assistant`; `ensureChatSession(user, assistant)`
+  - T1.4 api-client adds `AssistantType` and passes assistant to endpoints
+- **M2 Client toggles & threads**
+  - T2.1 Web store/UI toggle; thread routing; analytics
+  - T2.2 Mobile header segmented control; routing; analytics
+  - T2.3 Emit `assistant_switched`
+- **M3 Voice mode MVP**
+  - T3.1 `/transcribe` endpoint
+  - T3.2 api-client `transcribeAudio()`; `options.source='voice'`
+  - T3.3 Mobile: expo-av record; expo-speech playback
+  - T3.4 Web: MediaRecorder; SpeechSynthesis playback
+- **M4 Visuals**
+  - T4.1 Orbit components (web+mobile)
+  - T4.2 Confetti (canvas-confetti; RN particles) + haptic; hook into quest completion
+- **M5 Memory preference**
+  - T5.1 Preferences API
+  - T5.2 Web toggle + LS fallback
+  - T5.3 Mobile toggle UI
 
 ## Verification Plan
 - Global:
-  - `pnpm test:run`
-  - `pnpm --filter web lint`
-  - `pnpm --filter mobile typecheck`
+  - `pnpm -w build`
+  - `pnpm -w test`
 - By Milestone:
-  - M1: `pnpm test:run` (parser/unit tests)
-  - M2: `pnpm --filter mobile typecheck` + `E2E_RUNBOOK.md`
-  - M3: `pnpm --filter web lint` + `pnpm test:run`
-- UI Snapshots: none (manual E2E sufficient)
+  - M1: `pnpm -w build`
+  - M3: `pnpm -w test` (unit for metadata normalization & PromptBuilder)
+- UI Snapshots: auto; accept minor diffs for orbit/typing.
 
 ## Definition of Done
-- `metadata.tool_call` present on assistant messages when applicable; no regressions in SSE.
-- Mobile confirms and executes **reminder** and **location**; posts a clear confirmation to chat.
-- Nudges → mobile scheduling loop demonstrated; analytics events (`chat_tool_*`, `nudge_*`) recorded.
+- Separate assistant threads, distinct prompts, persisted preference, voice roundtrip, TTS toggle, orbit + confetti, analytics events.
 
 ## Coverage Matrix
-- Parser attaches tool_call → T1.1/T1.2/T1.4 → `pnpm test:run`
-- Mobile executes reminder/location → T2.1/T2.2/T2.4 → `E2E_RUNBOOK.md`
-- Nudges loop → T3.1/T3.2 → `pnpm test:run`
+- Separate threads → T1.3, T2.1, T2.2 → manual toggle & reload
+- Voice input → T3.1–T3.4 → record small sample, transcript appears
+- Preference persisted → T1.1, T5.1–T5.3 → GET/PUT + reload
+- Visuals → T4.1–T4.2 → observe during streaming & quest completion
 
 ## Arch Guardrails (must hold)
-- Contracts: only fenced ```tool JSON parsed; server never executes device tools; client requires explicit confirmation.
-- Data: no raw coordinates persisted; actions log is minimal, non-sensitive.
-- Concurrency: one active confirmation sheet per conversation; idempotent scheduling.
-- Migrations/Rollout: additive SQL; rollback included; tool prompt behind a feature flag.
-- Performance: unchanged budgets (p50 200ms / p95 800ms).
+- Contracts: SSE event order; assistant param required; idempotent session guarantee per (user, assistant).
+- Data: backfill `'fermi'`; preference default false; metadata additions remain optional.
+- Concurrency: streaming writes append-only; no race in session creation.
+- Migrations/Rollout: additive; deploy API before clients; defaults maintain compatibility.
+- Performance: keep SSE tokenization; avoid blocking in endpoints.
 
 ## Risks & Mitigations
-- Over-eager tool proposals → confirmation gate + per-tool feature flags.
-- Time ambiguity → ISO datetime required; decline if missing.
-- Parser fragility → strict fence header; schema validation; tests.
-- Privacy concerns → consent copy; ephemeral location; analytics without PII.
+- Media/API permissions → graceful fallbacks & clear copy.
+- Prompt divergence → central prompt definitions; unit snapshots.
+- RLS/index mismatch → composite indexes; query update to filter by assistant_type.
+
+## Residual Risks / Follow-ups
+- Point a cron job or Supabase scheduled task at `/api/nudges` creator (or add dedicated seeding script) so the `nudges` table receives weekly/stale intents automatically.
+- Run the new migration in your Supabase instance (`supabase db push`) before deploying API/mobile changes.
+- Consider persisting executed tool confirmations to `actions_log` from the server for parity; mobile currently only logs analytics.
+
+## Next Actions (Optional)
+- Configure notification permission education (deep link to Settings) for repeated nudge failures.
+- Add automated tests for `syncPendingNudges` once Expo Notification mocks are in place.
 
 ## Progress (to be updated by Execution-Agent)
-- [x] C1
+- [ ] C1
 - [ ] M1:
-  - [x] T1.1
-  - [x] T1.2
-  - [x] T1.3
-  - [x] T1.4
-- [x] C2
+  - [ ] T1.1
+  - [ ] T1.2
+  - [ ] T1.3
+  - [ ] T1.4
 - [ ] M2:
-  - [x] T2.1
-  - [x] T2.2
-  - [x] T2.3
-  - [x] T2.4
-- [ ] C3
+  - [ ] T2.1
+  - [ ] T2.2
+  - [ ] T2.3
 - [ ] M3:
   - [ ] T3.1
   - [ ] T3.2
   - [ ] T3.3
   - [ ] T3.4
+- [ ] M4:
+  - [ ] T4.1
+  - [ ] T4.2
+- [ ] M5:
+  - [ ] T5.1
+  - [ ] T5.2
+  - [ ] T5.3
 
 ## Decision Log (to be updated by Execution-Agent)
-- 2025-10-26 — Completed T1.1 (Tool protocol & consent copy) — Authored `TOOL_PROTOCOL.md` and `TOOL_CONSENT_COPY.md`; conformance checklist holds (no DB change, no external calls, validation captured in spec).
-- 2025-10-26 — Completed T1.2 (Tool manifest & schemas) — Added `ACTIONS_MANIFEST_SPEC.md` and shared manifest module `packages/api-client/src/tool-manifest.ts` with zod validators; no database or network changes introduced.
-- 2025-10-26 — Completed T1.3 (API client metadata contract) — Extended `packages/api-client` metadata helpers to reuse the manifest for validation and updated exports; verification suite remains green.
-- 2025-10-26 — Completed T1.4 (Parser test plan & cases) — Parser now reuses the shared manifest with expanded Vitest coverage (valid, invalid, malformed, multi-block scenarios) and passes full verification suite.
-- 2025-10-26 — Completed T2.1 (Confirm sheet spec) — Implemented dynamic confirmation sheet for all five tools with contextual copy (see `docs/MOBILE_CONFIRM_SHEET_SPEC.md`) and refreshed `ToolCallCard` styling.
-- 2025-10-26 — Completed T2.2 (Tools adapter spec) — Added `apps/mobile/lib/tools-adapter.ts`, `lib/time.ts`, `lib/calendar.ts`, and `lib/notes.ts` to execute reminders, timers, location, notes, and ICS exports via shared manifest validation.
-- 2025-10-26 — Completed T2.3 (Analytics events) — Documented tool analytics in `docs/ANALYTICS_EVENTS.md` and ensured `chat_tool_*` payloads include structured metadata.
-- 2025-10-26 — Completed T2.4 (E2E runbook) — Authored `docs/E2E_RUNBOOK.md` and updated `docs/TOOL_BRIDGE_RUNBOOK.md` to cover timers, notes, and calendar flows; verification commands remain green.
+- <date> — <decision> — <reasoning>
 
 ## UNBLOCK REQUEST Template
 - Problem:
