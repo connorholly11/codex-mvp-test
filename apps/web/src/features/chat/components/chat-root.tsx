@@ -10,7 +10,14 @@ import {
   useState,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchChatHistory, streamChatMessage, type ChatMessage } from '@purpose/api-client';
+import {
+  fetchChatHistory,
+  streamChatMessage,
+  type AssistantToolCall,
+  type ChatMessage,
+  type GetLocationToolCall,
+  type ScheduleReminderToolCall,
+} from '@purpose/api-client';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser-client';
 import {
   parsePersonalInsightsReport,
@@ -164,7 +171,7 @@ export function ChatRoot() {
         updateMessage(tempAssistantId, {
           id: assistantMessageId,
           createdAt: createdAt ?? new Date().toISOString(),
-          metadata: metadata ?? undefined,
+          metadata: metadata ?? null,
           pending: false,
         });
       },
@@ -302,6 +309,8 @@ function TypingIndicator() {
 
 function ChatBubble({ message }: { message: ChatMessage & { pending?: boolean } }) {
   const isUser = message.role === 'user';
+  const toolCall = !isUser ? message.metadata?.tool_call ?? null : null;
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -312,7 +321,116 @@ function ChatBubble({ message }: { message: ChatMessage & { pending?: boolean } 
         } ${message.pending ? 'opacity-70' : ''}`}
       >
         <p className="whitespace-pre-wrap">{message.content}</p>
+        {!isUser && toolCall ? <ToolCallSummary tool={toolCall} /> : null}
       </div>
     </div>
   );
+}
+
+function ToolCallSummary({ tool }: { tool: AssistantToolCall }) {
+  if (!tool) {
+    return null;
+  }
+
+  if (tool.validation.valid === false) {
+    const issue = tool.validation.issues?.[0] ?? 'validation failed';
+    return (
+      <div className="mt-3 rounded-xl border border-border/70 bg-surface px-3 py-2 text-xs text-muted">
+        <p className="font-medium text-foreground">Suggested tool unavailable</p>
+        <p className="mt-1 leading-snug">
+          Fermi proposed a follow-up action, but the request could not be used ({issue}).
+        </p>
+      </div>
+    );
+  }
+
+  if (isScheduleReminderTool(tool)) {
+    const scheduledDate = parseIso(tool.args.iso_datetime);
+    const scheduledLabel = scheduledDate ? formatDisplayDate(scheduledDate) : 'the requested time';
+    const status = tool.result?.status ?? null;
+    const statusLabel = status === 'confirmed' ? 'Confirmed' : status === 'dismissed' ? 'Dismissed' : null;
+
+    return (
+      <div className="mt-3 space-y-1 rounded-xl border border-border/70 bg-surface px-3 py-2 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium text-foreground">Reminder proposal</span>
+          {statusLabel ? (
+            <span
+              className={`text-[11px] font-semibold uppercase tracking-wide ${
+                status === 'confirmed' ? 'text-accent' : 'text-muted'
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
+        </div>
+        <p className="text-foreground">Schedule a notification for {scheduledLabel}.</p>
+        <p className="text-muted">Title: {tool.args.title}</p>
+        <p className="text-muted">Message: {tool.args.body}</p>
+      </div>
+    );
+  }
+
+  if (isGetLocationTool(tool)) {
+    const status = tool.result?.status ?? null;
+    const statusLabel = status === 'confirmed' ? 'Shared' : status === 'dismissed' ? 'Declined' : null;
+    const context = (tool.result?.context as { location?: { city?: string | null; region?: string | null; country?: string | null } } | undefined)?.location;
+    const locationLabel = context
+      ? [context.city, context.region, context.country].filter(Boolean).join(', ')
+      : null;
+
+    return (
+      <div className="mt-3 space-y-1 rounded-xl border border-border/70 bg-surface px-3 py-2 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium text-foreground">Location context</span>
+          {statusLabel ? (
+            <span
+              className={`text-[11px] font-semibold uppercase tracking-wide ${
+                status === 'confirmed' ? 'text-accent' : 'text-muted'
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
+        </div>
+        <p className="text-foreground">Fermi asked for city-level location.</p>
+        <p className="text-muted">
+          {locationLabel ? `Shared as ${locationLabel}.` : 'Waiting for mobile confirmation.'}
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function isScheduleReminderTool(tool: AssistantToolCall): tool is ScheduleReminderToolCall {
+  return tool.name === 'schedule_reminder' && tool.validation.valid === true;
+}
+
+function isGetLocationTool(tool: AssistantToolCall): tool is GetLocationToolCall {
+  return tool.name === 'get_location' && tool.validation.valid === true;
+}
+
+function parseIso(value: string): Date | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function formatDisplayDate(date: Date): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date);
+  } catch (error) {
+    console.warn('Failed to format reminder time', error);
+    return date.toLocaleString();
+  }
 }

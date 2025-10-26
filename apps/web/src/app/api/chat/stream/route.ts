@@ -7,6 +7,7 @@ import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
 import {
   buildSystemPrompt,
   ensureChatSession,
+  extractToolCallFromMessage,
   fetchChatHistory,
   fetchPersonalInsightsSummary,
   insertUserMessage,
@@ -143,20 +144,34 @@ export async function POST(request: NextRequest) {
         clearTimeout(timeoutId);
         clearInterval(heartbeat);
 
-        if (assistantMessage.trim().length > 0) {
-            const assistantInsert = await supabase
-              .from('chat_messages')
-              .insert({
-                user_id: userId,
-                session_id: chatSessionId!,
-                role: 'assistant',
-                content: assistantMessage.trim(),
-                metadata: {
-                  model,
-                },
-              })
-              .select('id, created_at, metadata')
-              .single();
+        const trimmedAssistantMessage = assistantMessage.trim();
+
+        if (trimmedAssistantMessage.length > 0) {
+          const { cleanedText, toolCall } = extractToolCallFromMessage(trimmedAssistantMessage);
+          const finalContent = cleanedText.length > 0 ? cleanedText : trimmedAssistantMessage;
+          const metadataPayload: Record<string, unknown> = {
+            model,
+            ...(toolCall ? { tool_call: toolCall } : {}),
+          };
+
+          if (toolCall && toolCall.validation?.valid === false) {
+            console.warn('Tool call validation failed', {
+              issues: toolCall.validation.issues,
+              name: toolCall.name,
+            });
+          }
+
+          const assistantInsert = await supabase
+            .from('chat_messages')
+            .insert({
+              user_id: userId,
+              session_id: chatSessionId!,
+              role: 'assistant',
+              content: finalContent,
+              metadata: metadataPayload,
+            })
+            .select('id, created_at, metadata')
+            .single();
 
           if (assistantInsert.error) {
             console.error('Failed to persist assistant message', assistantInsert.error);

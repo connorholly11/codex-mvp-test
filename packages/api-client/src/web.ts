@@ -1,6 +1,7 @@
 import type { OnboardingPayload } from './onboarding';
 import type { Json } from './types/supabase';
 import type { QuestProgressResponse, QuestStatus } from './quests';
+import type { AssistantMessageMetadata, AssistantToolCall } from './chat-metadata';
 
 let apiBaseUrl: string | null = null;
 
@@ -19,12 +20,49 @@ function resolveUrl(path: string): string {
   return apiBaseUrl ? `${apiBaseUrl}${path}` : path;
 }
 
+function normalizeAssistantMetadata(metadata: unknown): AssistantMessageMetadata | null {
+  if (!metadata || typeof metadata !== 'object') {
+    return null;
+  }
+
+  const typed = metadata as AssistantMessageMetadata;
+  const normalized: AssistantMessageMetadata = {
+    ...typed,
+    tool_call: typed.tool_call ?? null,
+  };
+
+  if (normalized.tool_call && typeof normalized.tool_call === 'object') {
+    const toolCall = normalized.tool_call as AssistantToolCall;
+    const validation = (toolCall as { validation?: unknown }).validation;
+    if (!validation || typeof validation !== 'object' || typeof (validation as { valid?: unknown }).valid !== 'boolean') {
+      normalized.tool_call = {
+        ...toolCall,
+        validation: {
+          valid: false,
+          issues: ['Tool validation payload is missing a boolean "valid" field.'],
+        },
+      };
+    } else if ((validation as { valid: boolean }).valid === false) {
+      const issues = (validation as { issues?: unknown }).issues;
+      normalized.tool_call = {
+        ...toolCall,
+        validation: {
+          valid: false,
+          issues: Array.isArray(issues) ? issues.filter((issue): issue is string => typeof issue === 'string') : undefined,
+        },
+      };
+    }
+  }
+
+  return normalized;
+}
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: string;
-  metadata?: Record<string, unknown> | null;
+  metadata?: AssistantMessageMetadata | null;
 };
 
 export type PersonalInsightsRecord = {
@@ -67,7 +105,7 @@ export type SendChatMessageResponse = {
     id: string;
     createdAt: string;
     content: string;
-    metadata: Record<string, unknown> | null;
+    metadata: AssistantMessageMetadata | null;
   };
 };
 
@@ -78,7 +116,7 @@ type StreamHandlers = {
   onFinal?: (payload: {
     assistantMessageId: string;
     createdAt: string | null;
-    metadata: Record<string, unknown> | null;
+    metadata: AssistantMessageMetadata | null;
   }) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
@@ -138,7 +176,14 @@ export async function submitOnboarding(
 export async function fetchChatHistory(options?: RequestOptions): Promise<ChatHistoryResponse> {
   const response = await fetch(resolveUrl('/api/chat/history'), buildRequestInit(undefined, options));
   await assertOk(response);
-  return (await response.json()) as ChatHistoryResponse;
+  const payload = (await response.json()) as ChatHistoryResponse;
+  return {
+    ...payload,
+    messages: (payload.messages ?? []).map((message) => ({
+      ...message,
+      metadata: normalizeAssistantMetadata(message.metadata ?? null),
+    })),
+  };
 }
 
 export async function sendChatMessage(
@@ -157,7 +202,14 @@ export async function sendChatMessage(
   );
 
   await assertOk(response);
-  return (await response.json()) as SendChatMessageResponse;
+  const payload = (await response.json()) as SendChatMessageResponse;
+  return {
+    ...payload,
+    assistantMessage: {
+      ...payload.assistantMessage,
+      metadata: normalizeAssistantMetadata(payload.assistantMessage.metadata ?? null),
+    },
+  };
 }
 
 export async function streamChatMessage(
@@ -241,7 +293,7 @@ export async function streamChatMessage(
                 handlers.onFinal({
                   assistantMessageId: payload.assistantMessageId,
                   createdAt: payload.createdAt ?? null,
-                  metadata: payload.metadata ?? null,
+                  metadata: normalizeAssistantMetadata(payload.metadata ?? null),
                 });
               }
             } catch (error) {

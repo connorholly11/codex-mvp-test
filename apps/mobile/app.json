@@ -14,11 +14,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Purpose uses your location to tailor coaching when you ask Fermi for local context."
+      }
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-location"
     ]
   }
 }

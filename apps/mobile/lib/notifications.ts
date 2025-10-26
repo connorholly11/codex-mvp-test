@@ -48,3 +48,28 @@ export async function scheduleDailyQuestReminder(hour = 9): Promise<void> {
 export async function cancelScheduledReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
+
+export async function scheduleOneOffReminder(options: {
+  fireDate: Date;
+  title: string;
+  body: string;
+}): Promise<string | null> {
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) {
+    return null;
+  }
+
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: options.title,
+        body: options.body,
+      },
+      trigger: options.fireDate,
+    });
+    return id;
+  } catch (error) {
+    console.warn('Failed to schedule one-off reminder', error);
+    return null;
+  }
+}

@@ -42,3 +42,10 @@ export type {
   PersonalInsightsSection,
   PersonalInsightsSummary,
 } from './reports';
+export type {
+  AssistantMessageMetadata,
+  AssistantToolCall,
+  GetLocationToolCall,
+  ScheduleReminderToolCall,
+  ToolCallResult,
+} from './chat-metadata';

@@ -3,11 +3,16 @@ import {
   fetchChatHistory,
   parsePersonalInsightsReport,
   streamChatMessage,
+  type AssistantMessageMetadata,
+  type AssistantToolCall,
   type ChatMessage,
+  type GetLocationToolCall,
+  type Json,
   type PersonalInsightsReport,
+  type ScheduleReminderToolCall,
 } from "@purpose/api-client";
 import { useNavigation } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +23,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -28,11 +34,23 @@ import {
   hapticNotificationError,
   hapticNotificationSuccess,
 } from "../../lib/haptics";
+import { scheduleOneOffReminder } from "../../lib/notifications";
+import { fetchCityLocation } from "../../lib/location";
 import { supabase } from "../../lib/supabase";
 import { useSessionStore } from "../../state/useSessionStore";
 import { palette } from "../../theme";
 
-type UiMessage = ChatMessage & { pending?: boolean };
+type ToolExecutionStatus = "confirmed" | "dismissed";
+
+type UiMessage = ChatMessage & {
+  pending?: boolean;
+  localToolStatus?: ToolExecutionStatus;
+};
+
+type PendingTool = {
+  messageId: string;
+  tool: AssistantToolCall;
+};
 
 function getTimeOfDayGreeting(now: Date) {
   const hour = now.getHours();
@@ -67,10 +85,63 @@ function pickEncouragement(displayName: string | null) {
   return ENCOURAGEMENTS[index];
 }
 
+function deriveToolStatus(
+  metadata?: AssistantMessageMetadata | null,
+): ToolExecutionStatus | null {
+  const status = metadata?.tool_call?.result?.status;
+  if (status === "confirmed" || status === "dismissed") {
+    return status;
+  }
+  return null;
+}
+
+function parseIsoDate(value: string): Date | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function formatReminderTarget(date: Date): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  } catch (error) {
+    console.warn("Failed to format reminder target", error);
+    return date.toLocaleString();
+  }
+}
+
+function formatLocationDisplay(options: {
+  city: string | null;
+  region: string | null;
+  country: string | null;
+}): string {
+  const parts = [options.city, options.region, options.country].filter(
+    (part): part is string => Boolean(part),
+  );
+  return parts.length > 0 ? parts.join(", ") : "your approximate area";
+}
+
+function isScheduleReminderTool(tool: AssistantToolCall): tool is ScheduleReminderToolCall {
+  return tool.name === "schedule_reminder" && tool.validation.valid === true;
+}
+
+function isGetLocationTool(tool: AssistantToolCall): tool is GetLocationToolCall {
+  return tool.name === "get_location" && tool.validation.valid === true;
+}
+
 export default function ChatScreen() {
   const navigation = useNavigation();
   const accessToken = useSessionStore((state) => state.accessToken);
   const displayName = useSessionStore((state) => state.displayName);
+  const userId = useSessionStore((state) => state.userId);
   const setProfile = useSessionStore((state) => state.setProfile);
 
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -79,6 +150,12 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
+  const [handledTools, setHandledTools] = useState<Record<string, ToolExecutionStatus>>({});
+  const toolSeenRef = useRef(new Set<string>());
+  const [isExecutingTool, setIsExecutingTool] = useState(false);
+  const [toolError, setToolError] = useState<string | null>(null);
 
   const streamAbortController = useRef<AbortController | null>(null);
   const hasHydrated = useRef(false);
@@ -118,7 +195,24 @@ export default function ChatScreen() {
         }
 
         animateLayout();
-        setMessages(history.messages.map((message) => ({ ...message })));
+        setChatSessionId(history.chatSessionId);
+
+        const historyHandled: Record<string, ToolExecutionStatus> = {};
+        history.messages.forEach((message) => {
+          const status = deriveToolStatus(message.metadata);
+          if (status) {
+            historyHandled[message.id] = status;
+            toolSeenRef.current.add(message.id);
+          }
+        });
+
+        setHandledTools((current) => ({ ...current, ...historyHandled }));
+        setMessages(
+          history.messages.map((message) => ({
+            ...message,
+            localToolStatus: historyHandled[message.id],
+          })),
+        );
         if (!hasHydrated.current && history.messages.length > 0) {
           hasHydrated.current = true;
           hapticImpactLight();
@@ -157,6 +251,43 @@ export default function ChatScreen() {
   }, [accessToken, setProfile]);
 
   useEffect(() => {
+    if (isExecutingTool || pendingTool) {
+      return;
+    }
+
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i];
+      if (message.role !== "assistant") {
+        continue;
+      }
+      const toolCandidate = message.metadata?.tool_call;
+      if (!toolCandidate) {
+        continue;
+      }
+      if (!isScheduleReminderTool(toolCandidate) && !isGetLocationTool(toolCandidate)) {
+        continue;
+      }
+      const actionableTool = toolCandidate;
+      if (deriveToolStatus(message.metadata)) {
+        continue;
+      }
+      if (handledTools[message.id]) {
+        continue;
+      }
+      if (toolSeenRef.current.has(message.id)) {
+        continue;
+      }
+
+      toolSeenRef.current.add(message.id);
+      animateLayout();
+      setPendingTool({ messageId: message.id, tool: actionableTool });
+      setToolError(null);
+      logEvent("chat_tool_proposed", { name: actionableTool.name });
+      break;
+    }
+  }, [handledTools, isExecutingTool, messages, pendingTool]);
+
+  useEffect(() => {
     return () => {
       streamAbortController.current?.abort();
     };
@@ -172,6 +303,314 @@ export default function ChatScreen() {
   );
   const hasMessages = messages.length > 0;
   const isAssistantResponding = messages.some((message) => message.pending);
+
+  const markToolStatus = useCallback(
+    async (
+      messageId: string,
+      tool: AssistantToolCall,
+      status: ToolExecutionStatus,
+      context?: Record<string, unknown>,
+    ) => {
+      const timestamp = new Date().toISOString();
+      let metadataForServer: AssistantMessageMetadata | null = null;
+
+      animateLayout();
+
+      setMessages((prev) =>
+        prev.map((message) => {
+          if (message.id !== messageId) {
+            return message;
+          }
+
+          const nextMetadata: AssistantMessageMetadata = {
+            ...(message.metadata ?? {}),
+            tool_call: {
+              ...tool,
+              result: {
+                status,
+                timestamp,
+                context,
+              },
+            },
+          };
+
+          metadataForServer = nextMetadata;
+
+          return {
+            ...message,
+            metadata: nextMetadata,
+            localToolStatus: status,
+          };
+        }),
+      );
+
+      setHandledTools((prev) => ({ ...prev, [messageId]: status }));
+
+      if (!metadataForServer) {
+        metadataForServer = {
+          tool_call: {
+            ...tool,
+            result: {
+              status,
+              timestamp,
+              context,
+            },
+          },
+        };
+      }
+
+      if (!chatSessionId || !userId || !metadataForServer) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .update({ metadata: metadataForServer as Json })
+        .eq("id", messageId)
+        .eq("session_id", chatSessionId)
+        .select("metadata")
+        .single();
+
+      if (error) {
+        console.warn("Failed to persist tool status", error);
+        return;
+      }
+
+      if (data?.metadata) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  metadata: (data.metadata as AssistantMessageMetadata) ?? null,
+                }
+              : message,
+          ),
+        );
+      }
+    },
+    [chatSessionId, supabase, userId],
+  );
+
+  const persistToolConfirmation = useCallback(
+    async (
+      tool: AssistantToolCall,
+      content: string,
+      context?: Record<string, unknown>,
+    ) => {
+      const timestamp = new Date().toISOString();
+      const metadata: AssistantMessageMetadata = {
+        tool_call_confirmation: {
+          name: tool.name,
+          ...context,
+        },
+      };
+
+      if (!chatSessionId || !userId) {
+        animateLayout();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `local-system-${Date.now()}`,
+            role: "system",
+            content,
+            createdAt: timestamp,
+            metadata,
+          },
+        ]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .insert({
+          user_id: userId,
+          session_id: chatSessionId,
+          role: "system",
+          content,
+          metadata: metadata as Json,
+        })
+        .select("id, created_at, metadata")
+        .single();
+
+      if (error) {
+        console.warn("Failed to persist tool confirmation", error);
+        animateLayout();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `local-system-${Date.now()}`,
+            role: "system",
+            content,
+            createdAt: timestamp,
+            metadata,
+          },
+        ]);
+        return;
+      }
+
+      animateLayout();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: data.id,
+          role: "system",
+          content,
+          createdAt: data.created_at,
+          metadata: (data.metadata as AssistantMessageMetadata | null) ?? metadata,
+        },
+      ]);
+    },
+    [chatSessionId, supabase, userId],
+  );
+
+  const handleDismissTool = useCallback(async () => {
+    if (!pendingTool) {
+      return;
+    }
+
+    const { messageId, tool } = pendingTool;
+    setPendingTool(null);
+    setToolError(null);
+    hapticImpactLight();
+    await markToolStatus(messageId, tool, "dismissed", {
+      reason: "user_dismissed",
+    });
+    logEvent("chat_tool_dismissed", { name: tool.name });
+  }, [markToolStatus, pendingTool]);
+
+  const handleConfirmTool = useCallback(async () => {
+    if (!pendingTool) {
+      return;
+    }
+
+    const { messageId, tool } = pendingTool;
+    setIsExecutingTool(true);
+    setToolError(null);
+
+    try {
+      if (isScheduleReminderTool(tool)) {
+        const reminderDate = parseIsoDate(tool.args.iso_datetime);
+        if (!reminderDate) {
+          throw new Error("Fermi suggested a reminder but the time was invalid.");
+        }
+
+        const now = new Date();
+        if (reminderDate.getTime() <= now.getTime() + 60000) {
+          throw new Error("The reminder time needs to be at least a minute in the future.");
+        }
+
+        const notificationId = await scheduleOneOffReminder({
+          fireDate: reminderDate,
+          title: tool.args.title,
+          body: tool.args.body,
+        });
+
+        if (!notificationId) {
+          throw new Error(
+            "Notifications are disabled. Turn them on in Settings to schedule reminders.",
+          );
+        }
+
+        const confirmationText = `Reminder scheduled for ${formatReminderTarget(reminderDate)}.`;
+
+        await persistToolConfirmation(tool, confirmationText, {
+          scheduledFor: reminderDate.toISOString(),
+          notificationId,
+        });
+
+        await markToolStatus(messageId, tool, "confirmed", {
+          scheduledFor: reminderDate.toISOString(),
+          notificationId,
+        });
+
+        logEvent("chat_tool_confirmed", {
+          name: tool.name,
+          scheduledFor: reminderDate.toISOString(),
+        });
+        setPendingTool(null);
+        setToolError(null);
+        hapticNotificationSuccess();
+      } else if (isGetLocationTool(tool)) {
+        const result = await fetchCityLocation();
+        if (result.kind === "denied") {
+          throw new Error(result.message);
+        }
+        if (result.kind === "error") {
+          throw new Error(result.message);
+        }
+
+        const locationLabel = formatLocationDisplay({
+          city: result.city,
+          region: result.region,
+          country: result.country,
+        });
+        const confirmationText = `Shared your location as ${locationLabel}.`;
+
+        await persistToolConfirmation(tool, confirmationText, {
+          location: {
+            city: result.city,
+            region: result.region,
+            country: result.country,
+          },
+        });
+
+        await markToolStatus(messageId, tool, "confirmed", {
+          location: {
+            city: result.city,
+            region: result.region,
+            country: result.country,
+            latitude: result.latitude,
+            longitude: result.longitude,
+          },
+        });
+
+        logEvent("chat_tool_confirmed", {
+          name: tool.name,
+          location: locationLabel,
+        });
+        setPendingTool(null);
+        setToolError(null);
+        hapticNotificationSuccess();
+      } else {
+        throw new Error("This suggestion isn't available yet.");
+      }
+    } catch (toolErr) {
+      const message =
+        toolErr instanceof Error
+          ? toolErr.message
+          : "Unable to complete that action right now.";
+
+      if (isScheduleReminderTool(tool) && message.includes("invalid")) {
+        await markToolStatus(messageId, tool, "dismissed", {
+          reason: "invalid_tool_payload",
+          message,
+        });
+        setPendingTool(null);
+        setToolError(null);
+      } else {
+        if (isGetLocationTool(tool) && message.toLowerCase().includes("permission")) {
+          Alert.alert("Location permission needed", message);
+        }
+        if (
+          isScheduleReminderTool(tool) &&
+          message.toLowerCase().includes("notifications")
+        ) {
+          Alert.alert("Enable notifications", message);
+        }
+
+        setToolError(message);
+      }
+
+      logEvent("chat_tool_failed", {
+        name: tool.name,
+        message,
+      });
+      hapticNotificationError();
+    } finally {
+      setIsExecutingTool(false);
+    }
+  }, [markToolStatus, pendingTool, persistToolConfirmation]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -255,7 +694,7 @@ export default function ChatScreen() {
                       ...message,
                       id: assistantMessageId,
                       createdAt: createdAt ?? message.createdAt,
-                      metadata: metadata ?? undefined,
+                      metadata: metadata ?? null,
                       pending: false,
                       content:
                         accumulatedContent.length > 0
@@ -358,6 +797,15 @@ export default function ChatScreen() {
           <EmptyState />
         )}
         {error ? <Text style={styles.chatError}>{error}</Text> : null}
+        {pendingTool ? (
+          <ToolCallCard
+            tool={pendingTool.tool}
+            isExecuting={isExecutingTool}
+            error={toolError}
+            onConfirm={handleConfirmTool}
+            onDismiss={handleDismissTool}
+          />
+        ) : null}
         {isAssistantResponding ? <TypingIndicator /> : null}
         <View style={styles.composer}>
           <TextInput
@@ -428,6 +876,59 @@ function ReportCard({ report }: { report: PersonalInsightsReport }) {
           • Primary constraint: {constraint}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+type ToolCallCardProps = {
+  tool: AssistantToolCall;
+  isExecuting: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onDismiss: () => void;
+};
+
+function ToolCallCard({ tool, isExecuting, error, onConfirm, onDismiss }: ToolCallCardProps) {
+  const isReminder = isScheduleReminderTool(tool);
+  let formattedReminder: string | null = null;
+  if (isReminder) {
+    const parsed = parseIsoDate(tool.args.iso_datetime);
+    formattedReminder = parsed ? formatReminderTarget(parsed) : null;
+  }
+  const confirmLabel = isReminder ? "Schedule reminder" : "Share location";
+  const title = isReminder ? "Set a follow-up reminder" : "Share your current city";
+  const description = isReminder
+    ? formattedReminder
+      ? `We'll queue a device notification for ${formattedReminder}.`
+      : "We'll queue the notification at the time Fermi suggested."
+    : "Share city-level location context so Fermi can ground future check-ins. We never store precise coordinates.";
+
+  return (
+    <View style={styles.toolCard}>
+      <Text style={styles.toolLabel}>Coach suggestion</Text>
+      <Text style={styles.toolTitle}>{title}</Text>
+      <Text style={styles.toolDescription}>{description}</Text>
+      {error ? <Text style={styles.toolError}>{error}</Text> : null}
+      <View style={styles.toolActions}>
+        <TouchableOpacity
+          style={[styles.toolPrimaryButton, isExecuting && styles.toolButtonDisabled]}
+          onPress={onConfirm}
+          disabled={isExecuting}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.toolPrimaryLabel}>
+            {isExecuting ? "Working..." : confirmLabel}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toolSecondaryButton, isExecuting && styles.toolButtonDisabled]}
+          onPress={onDismiss}
+          disabled={isExecuting}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.toolSecondaryLabel}>No thanks</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -629,5 +1130,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.textSecondary,
     lineHeight: 20,
+  },
+  toolCard: {
+    borderRadius: 20,
+    backgroundColor: palette.surfaceElevated,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    padding: 18,
+    gap: 12,
+  },
+  toolLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: palette.accent,
+  },
+  toolTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: palette.textPrimary,
+  },
+  toolDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: palette.textSecondary,
+  },
+  toolError: {
+    fontSize: 13,
+    color: palette.error,
+  },
+  toolActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  toolPrimaryButton: {
+    flex: 1,
+    backgroundColor: palette.accent,
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  toolPrimaryLabel: {
+    color: palette.textInverted,
+    fontWeight: "600",
+  },
+  toolSecondaryButton: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: palette.surface,
+  },
+  toolSecondaryLabel: {
+    color: palette.textPrimary,
+    fontWeight: "600",
+  },
+  toolButtonDisabled: {
+    opacity: 0.6,
   },
 });

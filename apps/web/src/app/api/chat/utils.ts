@@ -1,6 +1,8 @@
 import type { MessageParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages';
 import { getSystemPrompt } from '@/lib/ai/system-prompt';
 import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
+import type { AssistantToolCall } from '@purpose/api-client';
+import { z } from 'zod';
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: unknown };
 
@@ -148,4 +150,135 @@ export function buildInsightsSummary(content: unknown): string {
     .join('\n');
 
   return `Opening insight: ${report.openingInsight}\n${sectionSummaries}`;
+}
+
+const TOOL_BLOCK_REGEX = /```tool\s*\n([\s\S]*?)```/i;
+
+const scheduleReminderArgsSchema = z.object({
+  iso_datetime: z.string().min(10),
+  title: z.string().min(1).max(80),
+  body: z.string().min(1).max(160),
+});
+
+const getLocationArgsSchema = z.object({
+  granularity: z.literal('city'),
+});
+
+const toolCallSchema = z.object({
+  name: z.string(),
+  args: z.unknown(),
+});
+
+type ExtractToolCallResult = {
+  cleanedText: string;
+  toolCall: AssistantToolCall | null;
+};
+
+export function extractToolCallFromMessage(message: string): ExtractToolCallResult {
+  const match = TOOL_BLOCK_REGEX.exec(message);
+  if (!match) {
+    return { cleanedText: message.trim(), toolCall: null };
+  }
+
+  const rawJson = match[1].trim();
+  const textWithoutBlock = `${message.slice(0, match.index)}${message.slice(match.index + match[0].length)}`.trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return {
+      cleanedText: textWithoutBlock,
+      toolCall: {
+        name: 'invalid',
+        args: rawJson,
+        validation: {
+          valid: false,
+          issues: ['Invalid JSON in tool block'],
+        },
+      },
+    };
+  }
+
+  const baseParse = toolCallSchema.safeParse(parsed);
+  if (!baseParse.success || typeof baseParse.data.name !== 'string') {
+    return {
+      cleanedText: textWithoutBlock,
+      toolCall: {
+        name: 'invalid',
+        args: parsed,
+        validation: {
+          valid: false,
+          issues: ['Tool block must include a string "name" field.'],
+        },
+      },
+    };
+  }
+
+  const name = baseParse.data.name;
+  const args = (baseParse.data as { args: unknown }).args;
+
+  if (name === 'schedule_reminder') {
+    const result = scheduleReminderArgsSchema.safeParse(args);
+    if (result.success) {
+      return {
+        cleanedText: textWithoutBlock,
+        toolCall: {
+          name: 'schedule_reminder',
+          args: result.data,
+          validation: { valid: true },
+        },
+      };
+    }
+
+    return {
+      cleanedText: textWithoutBlock,
+      toolCall: {
+        name,
+        args,
+        validation: {
+          valid: false,
+          issues: result.error.errors.map((err) => err.message),
+        },
+      },
+    };
+  }
+
+  if (name === 'get_location') {
+    const result = getLocationArgsSchema.safeParse(args);
+    if (result.success) {
+      return {
+        cleanedText: textWithoutBlock,
+        toolCall: {
+          name: 'get_location',
+          args: result.data,
+          validation: { valid: true },
+        },
+      };
+    }
+
+    return {
+      cleanedText: textWithoutBlock,
+      toolCall: {
+        name,
+        args,
+        validation: {
+          valid: false,
+          issues: result.error.errors.map((err) => err.message),
+        },
+      },
+    };
+  }
+
+  return {
+    cleanedText: textWithoutBlock,
+    toolCall: {
+      name,
+      args,
+      validation: {
+        valid: false,
+        issues: [`Unsupported tool name "${name}".`],
+      },
+    },
+  };
 }

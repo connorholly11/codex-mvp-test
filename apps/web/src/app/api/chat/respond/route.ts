@@ -7,6 +7,7 @@ import { getAuthenticatedSupabase } from '@/lib/auth/get-authenticated-client';
 import {
   buildSystemPrompt,
   ensureChatSession,
+  extractToolCallFromMessage,
   fetchChatHistory,
   fetchPersonalInsightsSummary,
   insertUserMessage,
@@ -96,16 +97,29 @@ export async function POST(request: NextRequest) {
     assistantMessage = 'I had trouble formulating a response. Could you try again?';
   }
 
+  const trimmedAssistantMessage = assistantMessage.trim();
+  const { cleanedText, toolCall } = extractToolCallFromMessage(trimmedAssistantMessage);
+  const finalContent = cleanedText.length > 0 ? cleanedText : trimmedAssistantMessage;
+  const metadataPayload: Record<string, unknown> = {
+    model,
+    ...(toolCall ? { tool_call: toolCall } : {}),
+  };
+
+  if (toolCall && toolCall.validation?.valid === false) {
+    console.warn('Tool call validation failed', {
+      issues: toolCall.validation.issues,
+      name: toolCall.name,
+    });
+  }
+
   const assistantInsert = await supabase
     .from('chat_messages')
     .insert({
       user_id: userId,
       session_id: chatSessionId,
       role: 'assistant',
-      content: assistantMessage.trim(),
-      metadata: {
-        model,
-      },
+      content: finalContent,
+      metadata: metadataPayload,
     })
     .select('id, created_at, content, metadata')
     .single();
