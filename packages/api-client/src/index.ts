@@ -58,3 +58,5 @@ export {
   manifestSummaries,
   manifestConsentKeys,
 } from './chat-metadata';
+export { toolManifest, toolNames, safeParseToolArgs, ISO_DATE_REGEX } from './tool-manifest';
+export type { ToolName, ToolArgs, ToolManifest } from './tool-manifest';

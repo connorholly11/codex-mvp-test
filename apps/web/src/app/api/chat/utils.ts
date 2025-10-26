@@ -1,7 +1,8 @@
 import type { MessageParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages';
 import { getSystemPrompt } from '@/lib/ai/system-prompt';
 import type { SupabaseDatabaseClient } from '@/lib/supabase/types';
-import type { AssistantToolCall } from '@purpose/api-client';
+import type { AssistantToolCall, ToolName } from '@purpose/api-client';
+import { safeParseToolArgs, toolNames } from '@purpose/api-client';
 import { z } from 'zod';
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: unknown };
@@ -154,20 +155,12 @@ export function buildInsightsSummary(content: unknown): string {
 
 const TOOL_BLOCK_REGEX = /```tool\s*\n([\s\S]*?)```/i;
 
-const scheduleReminderArgsSchema = z.object({
-  iso_datetime: z.string().min(10),
-  title: z.string().min(1).max(80),
-  body: z.string().min(1).max(160),
-});
-
-const getLocationArgsSchema = z.object({
-  granularity: z.literal('city'),
-});
-
 const toolCallSchema = z.object({
   name: z.string(),
   args: z.unknown(),
 });
+
+const SUPPORTED_TOOL_NAMES = new Set<ToolName>(toolNames);
 
 type ExtractToolCallResult = {
   cleanedText: string;
@@ -218,19 +211,7 @@ export function extractToolCallFromMessage(message: string): ExtractToolCallResu
   const name = baseParse.data.name;
   const args = (baseParse.data as { args: unknown }).args;
 
-  if (name === 'schedule_reminder') {
-    const result = scheduleReminderArgsSchema.safeParse(args);
-    if (result.success) {
-      return {
-        cleanedText: textWithoutBlock,
-        toolCall: {
-          name: 'schedule_reminder',
-          args: result.data,
-          validation: { valid: true },
-        },
-      };
-    }
-
+  if (!SUPPORTED_TOOL_NAMES.has(name as ToolName)) {
     return {
       cleanedText: textWithoutBlock,
       toolCall: {
@@ -238,34 +219,20 @@ export function extractToolCallFromMessage(message: string): ExtractToolCallResu
         args,
         validation: {
           valid: false,
-          issues: result.error.errors.map((err) => err.message),
+          issues: [`Unsupported tool name "${name}".`],
         },
       },
     };
   }
 
-  if (name === 'get_location') {
-    const result = getLocationArgsSchema.safeParse(args);
-    if (result.success) {
-      return {
-        cleanedText: textWithoutBlock,
-        toolCall: {
-          name: 'get_location',
-          args: result.data,
-          validation: { valid: true },
-        },
-      };
-    }
-
+  const parsedArgs = safeParseToolArgs(name as ToolName, args);
+  if (parsedArgs.valid) {
     return {
       cleanedText: textWithoutBlock,
       toolCall: {
-        name,
-        args,
-        validation: {
-          valid: false,
-          issues: result.error.errors.map((err) => err.message),
-        },
+        name: name as ToolName,
+        args: parsedArgs.data,
+        validation: { valid: true },
       },
     };
   }
@@ -277,7 +244,7 @@ export function extractToolCallFromMessage(message: string): ExtractToolCallResu
       args,
       validation: {
         valid: false,
-        issues: [`Unsupported tool name "${name}".`],
+        issues: parsedArgs.issues,
       },
     },
   };

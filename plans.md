@@ -103,12 +103,12 @@ Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on 
 - Privacy concerns → consent copy; ephemeral location; analytics without PII.
 
 ## Progress (to be updated by Execution-Agent)
-- [ ] C1
+- [x] C1
 - [ ] M1:
   - [x] T1.1
   - [x] T1.2
   - [x] T1.3
-  - [ ] T1.4
+  - [x] T1.4
 - [ ] C2
 - [ ] M2:
   - [ ] T2.1
@@ -126,6 +126,7 @@ Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on 
 - 2025-10-26 — Completed T1.1 (Tool protocol & consent copy) — Authored `TOOL_PROTOCOL.md` and `TOOL_CONSENT_COPY.md`; conformance checklist holds (no DB change, no external calls, validation captured in spec).
 - 2025-10-26 — Completed T1.2 (Tool manifest & schemas) — Added `ACTIONS_MANIFEST_SPEC.md` and shared manifest module `packages/api-client/src/tool-manifest.ts` with zod validators; no database or network changes introduced.
 - 2025-10-26 — Completed T1.3 (API client metadata contract) — Extended `packages/api-client` metadata helpers to reuse the manifest for validation and updated exports; verification suite remains green.
+- 2025-10-26 — Completed T1.4 (Parser test plan & cases) — Parser now reuses the shared manifest with expanded Vitest coverage (valid, invalid, malformed, multi-block scenarios) and passes full verification suite.
 
 ## UNBLOCK REQUEST Template
 - Problem:
