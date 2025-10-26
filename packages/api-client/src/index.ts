@@ -47,5 +47,14 @@ export type {
   AssistantToolCall,
   GetLocationToolCall,
   ScheduleReminderToolCall,
+  StartTimerToolCall,
+  SaveNoteToolCall,
+  CreateIcsEventToolCall,
   ToolCallResult,
+} from './chat-metadata';
+export {
+  normalizeAssistantMetadata,
+  normalizeToolCall,
+  manifestSummaries,
+  manifestConsentKeys,
 } from './chat-metadata';

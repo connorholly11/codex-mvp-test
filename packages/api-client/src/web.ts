@@ -1,7 +1,8 @@
 import type { OnboardingPayload } from './onboarding';
 import type { Json } from './types/supabase';
 import type { QuestProgressResponse, QuestStatus } from './quests';
-import type { AssistantMessageMetadata, AssistantToolCall } from './chat-metadata';
+import { normalizeAssistantMetadata } from './chat-metadata';
+import type { AssistantMessageMetadata } from './chat-metadata';
 
 let apiBaseUrl: string | null = null;
 
@@ -18,43 +19,6 @@ function resolveUrl(path: string): string {
     return path;
   }
   return apiBaseUrl ? `${apiBaseUrl}${path}` : path;
-}
-
-function normalizeAssistantMetadata(metadata: unknown): AssistantMessageMetadata | null {
-  if (!metadata || typeof metadata !== 'object') {
-    return null;
-  }
-
-  const typed = metadata as AssistantMessageMetadata;
-  const normalized: AssistantMessageMetadata = {
-    ...typed,
-    tool_call: typed.tool_call ?? null,
-  };
-
-  if (normalized.tool_call && typeof normalized.tool_call === 'object') {
-    const toolCall = normalized.tool_call as AssistantToolCall;
-    const validation = (toolCall as { validation?: unknown }).validation;
-    if (!validation || typeof validation !== 'object' || typeof (validation as { valid?: unknown }).valid !== 'boolean') {
-      normalized.tool_call = {
-        ...toolCall,
-        validation: {
-          valid: false,
-          issues: ['Tool validation payload is missing a boolean "valid" field.'],
-        },
-      };
-    } else if ((validation as { valid: boolean }).valid === false) {
-      const issues = (validation as { issues?: unknown }).issues;
-      normalized.tool_call = {
-        ...toolCall,
-        validation: {
-          valid: false,
-          issues: Array.isArray(issues) ? issues.filter((issue): issue is string => typeof issue === 'string') : undefined,
-        },
-      };
-    }
-  }
-
-  return normalized;
 }
 
 export type ChatMessage = {
