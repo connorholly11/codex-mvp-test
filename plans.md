@@ -109,12 +109,12 @@ Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on 
   - [x] T1.2
   - [x] T1.3
   - [x] T1.4
-- [ ] C2
+- [x] C2
 - [ ] M2:
-  - [ ] T2.1
-  - [ ] T2.2
-  - [ ] T2.3
-  - [ ] T2.4
+  - [x] T2.1
+  - [x] T2.2
+  - [x] T2.3
+  - [x] T2.4
 - [ ] C3
 - [ ] M3:
   - [ ] T3.1
@@ -127,6 +127,10 @@ Make Fermi feel more alive and helpful by enabling **safe, confirmable tools on 
 - 2025-10-26 — Completed T1.2 (Tool manifest & schemas) — Added `ACTIONS_MANIFEST_SPEC.md` and shared manifest module `packages/api-client/src/tool-manifest.ts` with zod validators; no database or network changes introduced.
 - 2025-10-26 — Completed T1.3 (API client metadata contract) — Extended `packages/api-client` metadata helpers to reuse the manifest for validation and updated exports; verification suite remains green.
 - 2025-10-26 — Completed T1.4 (Parser test plan & cases) — Parser now reuses the shared manifest with expanded Vitest coverage (valid, invalid, malformed, multi-block scenarios) and passes full verification suite.
+- 2025-10-26 — Completed T2.1 (Confirm sheet spec) — Implemented dynamic confirmation sheet for all five tools with contextual copy (see `docs/MOBILE_CONFIRM_SHEET_SPEC.md`) and refreshed `ToolCallCard` styling.
+- 2025-10-26 — Completed T2.2 (Tools adapter spec) — Added `apps/mobile/lib/tools-adapter.ts`, `lib/time.ts`, `lib/calendar.ts`, and `lib/notes.ts` to execute reminders, timers, location, notes, and ICS exports via shared manifest validation.
+- 2025-10-26 — Completed T2.3 (Analytics events) — Documented tool analytics in `docs/ANALYTICS_EVENTS.md` and ensured `chat_tool_*` payloads include structured metadata.
+- 2025-10-26 — Completed T2.4 (E2E runbook) — Authored `docs/E2E_RUNBOOK.md` and updated `docs/TOOL_BRIDGE_RUNBOOK.md` to cover timers, notes, and calendar flows; verification commands remain green.
 
 ## UNBLOCK REQUEST Template
 - Problem:

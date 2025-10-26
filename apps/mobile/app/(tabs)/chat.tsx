@@ -10,6 +10,9 @@ import {
   type Json,
   type PersonalInsightsReport,
   type ScheduleReminderToolCall,
+  type StartTimerToolCall,
+  type SaveNoteToolCall,
+  type CreateIcsEventToolCall,
 } from "@purpose/api-client";
 import { useNavigation } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,8 +37,16 @@ import {
   hapticNotificationError,
   hapticNotificationSuccess,
 } from "../../lib/haptics";
-import { scheduleOneOffReminder } from "../../lib/notifications";
-import { fetchCityLocation } from "../../lib/location";
+import {
+  executeTool,
+  isSupportedTool,
+  ToolExecutionError,
+} from "../../lib/tools-adapter";
+import {
+  formatEventWindow,
+  formatReminderTarget,
+  formatTimerDuration,
+} from "../../lib/time";
 import { supabase } from "../../lib/supabase";
 import { useSessionStore } from "../../state/useSessionStore";
 import { palette } from "../../theme";
@@ -103,38 +114,130 @@ function parseIsoDate(value: string): Date | null {
   return date;
 }
 
-function formatReminderTarget(date: Date): string {
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  } catch (error) {
-    console.warn("Failed to format reminder target", error);
-    return date.toLocaleString();
-  }
-}
-
-function formatLocationDisplay(options: {
-  city: string | null;
-  region: string | null;
-  country: string | null;
-}): string {
-  const parts = [options.city, options.region, options.country].filter(
-    (part): part is string => Boolean(part),
-  );
-  return parts.length > 0 ? parts.join(", ") : "your approximate area";
-}
-
 function isScheduleReminderTool(tool: AssistantToolCall): tool is ScheduleReminderToolCall {
   return tool.name === "schedule_reminder" && tool.validation.valid === true;
 }
 
 function isGetLocationTool(tool: AssistantToolCall): tool is GetLocationToolCall {
   return tool.name === "get_location" && tool.validation.valid === true;
+}
+
+function isStartTimerTool(tool: AssistantToolCall): tool is StartTimerToolCall {
+  return tool.name === "start_timer" && tool.validation.valid === true;
+}
+
+function isSaveNoteTool(tool: AssistantToolCall): tool is SaveNoteToolCall {
+  return tool.name === "save_note" && tool.validation.valid === true;
+}
+
+function isCreateIcsEventTool(tool: AssistantToolCall): tool is CreateIcsEventToolCall {
+  return tool.name === "create_ics_event" && tool.validation.valid === true;
+}
+
+type ToolCopy = {
+  title: string;
+  description: string;
+  primaryCta: string;
+  secondaryCta: string;
+  highlight?: string;
+  footnote?: string;
+};
+
+function truncate(text: string, limit = 140): string {
+  if (text.length <= limit) {
+    return text;
+  }
+  return `${text.slice(0, limit - 3)}...`;
+}
+
+function getToolCopy(tool: AssistantToolCall): ToolCopy {
+  if (isScheduleReminderTool(tool)) {
+    const reminderDate = parseIsoDate(tool.args.iso_datetime);
+    const timeLabel = reminderDate
+      ? formatReminderTarget(reminderDate)
+      : tool.args.iso_datetime;
+
+    return {
+      title: "Schedule this reminder?",
+      description:
+        "Fermi will set a one-time reminder on your device for the time you confirm.",
+      highlight: `Target time: ${timeLabel}`,
+      primaryCta: "Schedule reminder",
+      secondaryCta: "Not now",
+      footnote: "Reminders stay on this device and never touch our servers.",
+    };
+  }
+
+  if (isStartTimerTool(tool)) {
+    const highlightParts = [
+      `Duration: ${formatTimerDuration(tool.args.duration_seconds)}`,
+      tool.args.label ? `Label: ${tool.args.label}` : null,
+    ].filter(Boolean) as string[];
+
+    return {
+      title: "Start this timer?",
+      description:
+        "Fermi can keep a countdown in the background and ping you when time is up.",
+      highlight: highlightParts.join("\n"),
+      primaryCta: "Start timer",
+      secondaryCta: "Cancel",
+      footnote: "Timers rely on local notifications and respect your focus settings.",
+    };
+  }
+
+  if (isGetLocationTool(tool)) {
+    return {
+      title: "Share your city?",
+      description:
+        "Fermi will pull your coarse city and region to tailor the guidance.",
+      highlight: "No precise coordinates are stored—ever.",
+      primaryCta: "Share city",
+      secondaryCta: "Keep private",
+      footnote: "You can revoke access later in system Settings.",
+    };
+  }
+
+  if (isSaveNoteTool(tool)) {
+    const lines: string[] = [];
+    if (tool.args.title) {
+      lines.push(`Title: ${tool.args.title}`);
+    }
+    lines.push(`Preview: ${truncate(tool.args.body)}`);
+
+    return {
+      title: "Save this note?",
+      description:
+        "The note stays private to you. We'll sync it later if you're online.",
+      highlight: lines.join("\n"),
+      primaryCta: "Save note",
+      secondaryCta: "Skip",
+      footnote: "You can revisit saved notes from your profile soon.",
+    };
+  }
+
+  if (isCreateIcsEventTool(tool)) {
+    const startDate = parseIsoDate(tool.args.start_iso);
+    const eventWindow = startDate
+      ? formatEventWindow(startDate, tool.args.duration_minutes)
+      : `${tool.args.start_iso} (${tool.args.duration_minutes} min)`;
+
+    return {
+      title: "Create calendar file?",
+      description:
+        "Fermi will generate a downloadable .ics file so you can add it anywhere.",
+      highlight: `Event: ${eventWindow}`,
+      primaryCta: "Create .ics file",
+      secondaryCta: "Maybe later",
+      footnote: "You'll choose where to add the event once the share sheet opens.",
+    };
+  }
+
+  return {
+    title: "Run this action?",
+    description: "Fermi has a suggestion ready for your device.",
+    primaryCta: "Confirm",
+    secondaryCta: "Not now",
+  };
 }
 
 export default function ChatScreen() {
@@ -261,13 +364,12 @@ export default function ChatScreen() {
         continue;
       }
       const toolCandidate = message.metadata?.tool_call;
-      if (!toolCandidate) {
+      if (!toolCandidate || toolCandidate.validation?.valid !== true) {
         continue;
       }
-      if (!isScheduleReminderTool(toolCandidate) && !isGetLocationTool(toolCandidate)) {
+      if (!isSupportedTool(toolCandidate)) {
         continue;
       }
-      const actionableTool = toolCandidate;
       if (deriveToolStatus(message.metadata)) {
         continue;
       }
@@ -280,9 +382,9 @@ export default function ChatScreen() {
 
       toolSeenRef.current.add(message.id);
       animateLayout();
-      setPendingTool({ messageId: message.id, tool: actionableTool });
+      setPendingTool({ messageId: message.id, tool: toolCandidate });
       setToolError(null);
-      logEvent("chat_tool_proposed", { name: actionableTool.name });
+      logEvent("chat_tool_proposed", { name: toolCandidate.name });
       break;
     }
   }, [handledTools, isExecutingTool, messages, pendingTool]);
@@ -489,99 +591,34 @@ export default function ChatScreen() {
     setToolError(null);
 
     try {
-      if (isScheduleReminderTool(tool)) {
-        const reminderDate = parseIsoDate(tool.args.iso_datetime);
-        if (!reminderDate) {
-          throw new Error("Fermi suggested a reminder but the time was invalid.");
-        }
+      const result = await executeTool(tool);
 
-        const now = new Date();
-        if (reminderDate.getTime() <= now.getTime() + 60000) {
-          throw new Error("The reminder time needs to be at least a minute in the future.");
-        }
+      await persistToolConfirmation(
+        tool,
+        result.confirmationText,
+        result.metadataContext,
+      );
 
-        const notificationId = await scheduleOneOffReminder({
-          fireDate: reminderDate,
-          title: tool.args.title,
-          body: tool.args.body,
-        });
+      await markToolStatus(messageId, tool, "confirmed", result.metadataContext);
 
-        if (!notificationId) {
-          throw new Error(
-            "Notifications are disabled. Turn them on in Settings to schedule reminders.",
-          );
-        }
+      logEvent("chat_tool_confirmed", {
+        name: tool.name,
+        ...(result.analyticsPayload ?? {}),
+      });
 
-        const confirmationText = `Reminder scheduled for ${formatReminderTarget(reminderDate)}.`;
-
-        await persistToolConfirmation(tool, confirmationText, {
-          scheduledFor: reminderDate.toISOString(),
-          notificationId,
-        });
-
-        await markToolStatus(messageId, tool, "confirmed", {
-          scheduledFor: reminderDate.toISOString(),
-          notificationId,
-        });
-
-        logEvent("chat_tool_confirmed", {
-          name: tool.name,
-          scheduledFor: reminderDate.toISOString(),
-        });
-        setPendingTool(null);
-        setToolError(null);
-        hapticNotificationSuccess();
-      } else if (isGetLocationTool(tool)) {
-        const result = await fetchCityLocation();
-        if (result.kind === "denied") {
-          throw new Error(result.message);
-        }
-        if (result.kind === "error") {
-          throw new Error(result.message);
-        }
-
-        const locationLabel = formatLocationDisplay({
-          city: result.city,
-          region: result.region,
-          country: result.country,
-        });
-        const confirmationText = `Shared your location as ${locationLabel}.`;
-
-        await persistToolConfirmation(tool, confirmationText, {
-          location: {
-            city: result.city,
-            region: result.region,
-            country: result.country,
-          },
-        });
-
-        await markToolStatus(messageId, tool, "confirmed", {
-          location: {
-            city: result.city,
-            region: result.region,
-            country: result.country,
-            latitude: result.latitude,
-            longitude: result.longitude,
-          },
-        });
-
-        logEvent("chat_tool_confirmed", {
-          name: tool.name,
-          location: locationLabel,
-        });
-        setPendingTool(null);
-        setToolError(null);
-        hapticNotificationSuccess();
-      } else {
-        throw new Error("This suggestion isn't available yet.");
-      }
+      setPendingTool(null);
+      setToolError(null);
+      hapticNotificationSuccess();
     } catch (toolErr) {
+      const executionError = toolErr instanceof ToolExecutionError ? toolErr : null;
       const message =
-        toolErr instanceof Error
+        executionError?.message ??
+        (toolErr instanceof Error
           ? toolErr.message
-          : "Unable to complete that action right now.";
+          : "Unable to complete that action right now.");
+      const code = executionError?.code ?? "unknown";
 
-      if (isScheduleReminderTool(tool) && message.includes("invalid")) {
+      if (executionError?.code === "validation_error") {
         await markToolStatus(messageId, tool, "dismissed", {
           reason: "invalid_tool_payload",
           message,
@@ -589,14 +626,17 @@ export default function ChatScreen() {
         setPendingTool(null);
         setToolError(null);
       } else {
-        if (isGetLocationTool(tool) && message.toLowerCase().includes("permission")) {
+        if (tool.name === "get_location" && code === "permission_denied") {
           Alert.alert("Location permission needed", message);
         }
         if (
-          isScheduleReminderTool(tool) &&
-          message.toLowerCase().includes("notifications")
+          (tool.name === "schedule_reminder" || tool.name === "start_timer") &&
+          code === "permission_denied"
         ) {
           Alert.alert("Enable notifications", message);
+        }
+        if (tool.name === "create_ics_event" && code === "share_unavailable") {
+          Alert.alert("Sharing unavailable", message);
         }
 
         setToolError(message);
@@ -604,6 +644,7 @@ export default function ChatScreen() {
 
       logEvent("chat_tool_failed", {
         name: tool.name,
+        code,
         message,
       });
       hapticNotificationError();
@@ -889,26 +930,20 @@ type ToolCallCardProps = {
 };
 
 function ToolCallCard({ tool, isExecuting, error, onConfirm, onDismiss }: ToolCallCardProps) {
-  const isReminder = isScheduleReminderTool(tool);
-  let formattedReminder: string | null = null;
-  if (isReminder) {
-    const parsed = parseIsoDate(tool.args.iso_datetime);
-    formattedReminder = parsed ? formatReminderTarget(parsed) : null;
-  }
-  const confirmLabel = isReminder ? "Schedule reminder" : "Share location";
-  const title = isReminder ? "Set a follow-up reminder" : "Share your current city";
-  const description = isReminder
-    ? formattedReminder
-      ? `We'll queue a device notification for ${formattedReminder}.`
-      : "We'll queue the notification at the time Fermi suggested."
-    : "Share city-level location context so Fermi can ground future check-ins. We never store precise coordinates.";
+  const copy = useMemo(() => getToolCopy(tool), [tool]);
 
   return (
     <View style={styles.toolCard}>
       <Text style={styles.toolLabel}>Coach suggestion</Text>
-      <Text style={styles.toolTitle}>{title}</Text>
-      <Text style={styles.toolDescription}>{description}</Text>
+      <Text style={styles.toolTitle}>{copy.title}</Text>
+      <Text style={styles.toolDescription}>{copy.description}</Text>
+      {copy.highlight ? (
+        <Text style={styles.toolDetail}>{copy.highlight}</Text>
+      ) : null}
       {error ? <Text style={styles.toolError}>{error}</Text> : null}
+      {copy.footnote ? (
+        <Text style={styles.toolFootnote}>{copy.footnote}</Text>
+      ) : null}
       <View style={styles.toolActions}>
         <TouchableOpacity
           style={[styles.toolPrimaryButton, isExecuting && styles.toolButtonDisabled]}
@@ -917,7 +952,7 @@ function ToolCallCard({ tool, isExecuting, error, onConfirm, onDismiss }: ToolCa
           activeOpacity={0.85}
         >
           <Text style={styles.toolPrimaryLabel}>
-            {isExecuting ? "Working..." : confirmLabel}
+            {isExecuting ? "Working..." : copy.primaryCta}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -926,7 +961,7 @@ function ToolCallCard({ tool, isExecuting, error, onConfirm, onDismiss }: ToolCa
           disabled={isExecuting}
           activeOpacity={0.75}
         >
-          <Text style={styles.toolSecondaryLabel}>No thanks</Text>
+          <Text style={styles.toolSecondaryLabel}>{copy.secondaryCta}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1156,9 +1191,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: palette.textSecondary,
   },
+  toolDetail: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: palette.textPrimary,
+    backgroundColor: palette.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: palette.borderMuted,
+  },
   toolError: {
     fontSize: 13,
     color: palette.error,
+  },
+  toolFootnote: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: palette.textMuted,
   },
   toolActions: {
     flexDirection: "row",

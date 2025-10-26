@@ -73,3 +73,34 @@ export async function scheduleOneOffReminder(options: {
     return null;
   }
 }
+
+export async function scheduleCountdownTimer(options: {
+  durationSeconds: number;
+  title: string;
+  body: string;
+}): Promise<{ notificationId: string; fireDate: Date } | null> {
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) {
+    return null;
+  }
+
+  try {
+    const triggerSeconds = Math.max(1, Math.round(options.durationSeconds));
+    const fireDate = new Date(Date.now() + triggerSeconds * 1000);
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: options.title,
+        body: options.body,
+      },
+      trigger: {
+        seconds: triggerSeconds,
+        repeats: false,
+      },
+    });
+
+    return { notificationId, fireDate };
+  } catch (error) {
+    console.warn("Failed to schedule countdown timer", error);
+    return null;
+  }
+}
